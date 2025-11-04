@@ -1,0 +1,46 @@
+name: trashmapr
+description: Geo-photo density mapping app with AI classification
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management
+  provider: ^6.1.5+1
+
+  # Map & Location
+  flutter_map: ^8.2.2
+  latlong2: ^0.9.1
+  geolocator: ^14.0.2
+
+  # Camera
+  camera: ^0.11.3
+  image_picker: ^1.0.7
+
+  # Authentication
+  google_sign_in: ^7.2.0
+
+  # HTTP & API
+  http: ^1.5.0
+
+  # Environment Variables
+  flutter_dotenv: ^6.0.0
+
+  # UI
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - .env

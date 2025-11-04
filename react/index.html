@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Geo-Photo Density Map</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Custom styles for react-modal overlay and content */
+      .ReactModal__Overlay {
+        opacity: 0;
+        transition: opacity 200ms ease-in-out;
+        background-color: rgba(0, 0, 0, 0.75);
+        z-index: 1000;
+      }
+      .ReactModal__Overlay--after-open{
+        opacity: 1;
+      }
+      .ReactModal__Overlay--before-close{
+        opacity: 0;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.0",
+    "leaflet": "https://aistudiocdn.com/leaflet@^1.9.4",
+    "leaflet.heat": "https://aistudiocdn.com/leaflet.heat@^0.2.0",
+    "react-modal": "https://aistudiocdn.com/react-modal@^3.16.3",
+    "vite": "https://aistudiocdn.com/vite@^7.1.12",
+    "@react-google-maps/api": "https://aistudiocdn.com/@react-google-maps/api@^2.20.7"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

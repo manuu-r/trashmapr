@@ -1,0 +1,28 @@
+# FastAPI and ASGI server
+fastapi==0.121.0
+uvicorn[standard]==0.38.0
+
+# Database - SQLAlchemy and PostgreSQL
+sqlalchemy[asyncio]==2.0.44
+asyncpg==0.30.0
+alembic==1.17.1
+geoalchemy2==0.18.0
+
+# Google Cloud services
+google-cloud-storage==3.4.0
+google-generativeai==0.8.3
+
+# Authentication (note: we're using custom Google OAuth, not fastapi-users)
+# fastapi-users not needed - using custom implementation
+python-dotenv==1.2.1
+authlib==1.3.2
+itsdangerous==2.2.0
+
+# Request handling and validation
+python-multipart==0.0.20
+pydantic[email]==2.12.2
+pydantic-settings==2.7.1
+httpx==0.28.1
+
+# Image processing
+pillow==11.3.0

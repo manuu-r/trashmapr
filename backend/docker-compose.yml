@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  # FastAPI backend - connects to Google Cloud services
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trashmapr-api
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount source code for hot reload in development
+      - .:/app
+      # Mount Google Cloud credentials from project root
+      - ../gcp_creds.json:/tmp/gcp_creds.json:ro
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp_creds.json
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  default:
+    name: trashmapr-network
