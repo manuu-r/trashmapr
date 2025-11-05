@@ -1,18 +1,18 @@
-import google.generativeai as genai
-from typing import Tuple, Optional
-import io
-from PIL import Image
-from config import settings
+from typing import Optional, Tuple
 
-# Configure Gemini API
-genai.configure(api_key=settings.gemini_api_key)
+from google import genai
+from google.genai import types
+
+from app.core.config import settings
 
 
 class GeminiService:
-    """Service for analyzing images using Google Gemini API."""
+    """Service for analyzing images using Google Gemini API (New SDK)."""
 
     def __init__(self):
-        self.model = genai.GenerativeModel("gemini-1.5-flash")
+        # Initialize the new Google Gen AI client
+        self.client = genai.Client(api_key=settings.gemini_api_key)
+        self.model_name = "gemini-2.5-flash"
 
     async def analyze_image(self, image_bytes: bytes) -> Tuple[bool, Optional[int]]:
         """
@@ -31,9 +31,6 @@ class GeminiService:
             Exception: If the API call fails
         """
         try:
-            # Load image from bytes
-            image = Image.open(io.BytesIO(image_bytes))
-
             # Prompt for Gemini
             prompt = """Analyze this image carefully:
 
@@ -59,8 +56,14 @@ OUTPUT ONLY ONE OF THESE:
 
 Output only the single word or number, nothing else."""
 
-            # Call Gemini API
-            response = self.model.generate_content([prompt, image])
+            # Call Gemini API with new SDK
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=[
+                    prompt,
+                    types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
+                ],
+            )
 
             # Parse response
             result = response.text.strip().upper()

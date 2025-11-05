@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field, field_validator, EmailStr
 from datetime import datetime
-from typing import Optional, List
+from typing import List, Optional
+
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class LocationSchema(BaseModel):
@@ -25,6 +26,8 @@ class UserResponse(BaseModel):
     email: str
     name: Optional[str] = None
     picture: Optional[str] = None
+    total_points: int = 0
+    total_uploads: int = 0
     created_at: datetime
 
     model_config = {"from_attributes": True}

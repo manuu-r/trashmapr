@@ -1,12 +1,15 @@
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.ext.asyncio import AsyncSession
-from google.oauth2 import id_token
-from google.auth.transport import requests
 from typing import Optional, Tuple
-from models import User
-from database import get_db
-from config import settings
+
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from google.auth.transport import requests
+from google.oauth2 import id_token
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.config import settings
+from app.db.crud import get_or_create_user
+from app.db.database import get_db
+from app.db.models import User
 
 # HTTP Bearer token scheme
 security = HTTPBearer()
@@ -100,13 +103,17 @@ async def get_current_user(
     Raises:
         HTTPException: If authentication fails
     """
-    from crud import get_or_create_user
+    print(f"Authenticating user with token: {credentials.credentials[:20]}...")
 
     token = credentials.credentials
     email, name, picture = await auth_service.get_user_info_from_token(token)
 
+    print(f"Token verified for user: {email}")
+
     # Get or create user in database
     user = await get_or_create_user(db, email, name, picture)
+
+    print(f"User authenticated: {user.email} (ID: {user.id})")
 
     return user
 
@@ -128,8 +135,6 @@ async def get_current_user_optional(
     Returns:
         User object or None
     """
-    from crud import get_or_create_user
-
     if credentials is None:
         return None
 

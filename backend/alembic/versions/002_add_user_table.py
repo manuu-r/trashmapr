@@ -6,13 +6,12 @@ Create Date: 2025-01-02 00:00:00.000000
 
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "002"
-down_revision = "001"
+revision = "002_add_user_table"
+down_revision = "001_initial_migration"
 branch_labels = None
 depends_on = None
 

@@ -1,10 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/point.dart';
 
 class ImageModal extends StatelessWidget {
   final Point point;
 
   const ImageModal({super.key, required this.point});
+
+  Future<void> _openDirections() async {
+    // Try to open in Google Maps app first, fallback to web
+    final lat = point.location.lat;
+    final lng = point.location.lng;
+
+    // Google Maps app URL scheme
+    final googleMapsUrl = Uri.parse('comgooglemaps://?q=$lat,$lng');
+    final googleMapsWebUrl = Uri.parse(
+        'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+
+    // Try app first
+    if (await canLaunchUrl(googleMapsUrl)) {
+      await launchUrl(googleMapsUrl);
+    } else {
+      // Fallback to web
+      await launchUrl(googleMapsWebUrl, mode: LaunchMode.externalApplication);
+    }
+  }
 
   String _getCategoryLabel(int category) {
     switch (category) {
@@ -77,7 +97,7 @@ class ImageModal extends StatelessWidget {
                     child: CircularProgressIndicator(
                       value: loadingProgress.expectedTotalBytes != null
                           ? loadingProgress.cumulativeBytesLoaded /
-                                loadingProgress.expectedTotalBytes!
+                              loadingProgress.expectedTotalBytes!
                           : null,
                     ),
                   ),
@@ -151,24 +171,6 @@ class ImageModal extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                // Location
-                Row(
-                  children: [
-                    const Icon(Icons.location_on, size: 20),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Location: ',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    Expanded(
-                      child: Text(
-                        '${point.location.lat.toStringAsFixed(6)}, ${point.location.lng.toStringAsFixed(6)}',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
                 // Timestamp
                 Row(
                   children: [
@@ -186,26 +188,33 @@ class ImageModal extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                // ID
-                Row(
-                  children: [
-                    const Icon(Icons.tag, size: 20),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'ID: ',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          // Actions
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                    label: const Text('Close'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _openDirections,
+                    icon: const Icon(Icons.directions),
+                    label: const Text('Directions'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
                     ),
-                    Expanded(
-                      child: Text(
-                        point.id,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontFamily: 'monospace',
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),

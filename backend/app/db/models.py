@@ -1,18 +1,18 @@
+from geoalchemy2 import Geography
 from sqlalchemy import (
+    Boolean,
     Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
     Integer,
     String,
-    Float,
-    Boolean,
-    DateTime,
     Text,
-    Index,
-    ForeignKey,
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from geoalchemy2 import Geography
 
 Base = declarative_base()
 
@@ -29,6 +29,10 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     name = Column(String(255), nullable=True)
     picture = Column(Text, nullable=True)
+    total_points = Column(
+        Integer, default=0, nullable=False
+    )  # Points earned (250 per upload)
+    total_uploads = Column(Integer, default=0, nullable=False)  # Total uploads count
     created_at = Column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -1,11 +1,11 @@
 class Point {
-  final String id;
+  final int id;
   final String imageUrl;
   final PointLocation location;
   final double weight; // 0.25-1.0
   final int category; // 1-4
   final String timestamp;
-  final String? userId;
+  final int? userId;
 
   Point({
     required this.id,
@@ -19,13 +19,14 @@ class Point {
 
   factory Point.fromJson(Map<String, dynamic> json) {
     return Point(
-      id: json['id'] as String,
+      id: json['id'] as int,
       imageUrl: json['image_url'] as String,
-      location: PointLocation.fromJson(json['location'] as Map<String, dynamic>),
+      location:
+          PointLocation.fromJson(json['location'] as Map<String, dynamic>),
       weight: (json['weight'] as num).toDouble(),
       category: json['category'] as int,
       timestamp: json['timestamp'] as String,
-      userId: json['user_id'] as String?,
+      userId: json['user_id'] as int?,
     );
   }
 

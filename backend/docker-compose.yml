@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   # FastAPI backend - connects to Google Cloud services
   api:
@@ -12,10 +10,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      # Mount source code for hot reload in development
       - .:/app
-      # Mount Google Cloud credentials from project root
-      - ../gcp_creds.json:/tmp/gcp_creds.json:ro
+      - ./gcp_creds.json:/tmp/gcp_creds.json:ro
     environment:
       - GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp_creds.json
     restart: unless-stopped
@@ -25,6 +21,19 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  # Cloudflare Tunnel - exposes backend to the internet
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: trashmapr-tunnel
+    command: tunnel --no-autoupdate run
+    env_file:
+      - .env
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    restart: unless-stopped
+    depends_on:
+      - api
 
 networks:
   default:

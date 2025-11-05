@@ -10,7 +10,7 @@ geoalchemy2==0.18.0
 
 # Google Cloud services
 google-cloud-storage==3.4.0
-google-generativeai==0.8.3
+google-genai==1.48.0
 
 # Authentication (note: we're using custom Google OAuth, not fastapi-users)
 # fastapi-users not needed - using custom implementation

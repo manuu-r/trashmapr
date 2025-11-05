@@ -3,8 +3,8 @@ Centralized configuration management using Pydantic Settings.
 All environment variables must be defined in .env file.
 """
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):

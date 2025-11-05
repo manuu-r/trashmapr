@@ -53,5 +53,25 @@
 	<string>We need your location to tag photos with GPS coordinates</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>We need your location to tag photos with GPS coordinates</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.372775247083-01af5rmum5eget5cd6goucrvrvh1v8vh</string>
+			</array>
+		</dict>
+	</array>
+	<key>GIDClientID</key>
+	<string>372775247083-01af5rmum5eget5cd6goucrvrvh1v8vh.apps.googleusercontent.com</string>
+	<key>io.flutter.embedded_views_preview</key>
+	<true/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>comgooglemaps</string>
+		<string>googlemaps</string>
+	</array>
 </dict>
 </plist>

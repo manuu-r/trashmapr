@@ -92,13 +92,17 @@ class _MyUploadsScreenState extends State<MyUploadsScreen> {
 
       if (success) {
         if (mounted) {
+          // Remove the item from the local list instead of refetching
+          setState(() {
+            _uploads?.removeWhere((upload) => upload.id == point.id);
+          });
+
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Upload deleted successfully'),
               backgroundColor: Colors.green,
             ),
           );
-          _loadUploads(); // Reload the list
         }
       } else {
         throw Exception('Delete failed');
@@ -195,7 +199,6 @@ class _MyUploadsScreenState extends State<MyUploadsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Uploads'),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadUploads),
         ],

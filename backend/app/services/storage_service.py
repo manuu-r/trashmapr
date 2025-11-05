@@ -1,8 +1,10 @@
-from google.cloud import storage
-from typing import Tuple
 import uuid
 from datetime import datetime
-from config import settings
+from typing import Tuple
+
+from google.cloud import storage
+
+from app.core.config import settings
 
 
 class StorageService:
@@ -46,11 +48,11 @@ class StorageService:
             # Upload bytes
             blob.upload_from_string(image_bytes, content_type=content_type)
 
-            # Make blob publicly accessible
-            blob.make_public()
-
-            # Return public URL
-            return blob.public_url
+            # Return public URL (bucket must have public access configured via IAM)
+            # Or use signed URL for temporary access
+            return (
+                f"https://storage.googleapis.com/{settings.gcs_bucket_name}/{filename}"
+            )
 
         except Exception as e:
             print(f"GCS upload error: {e}")

@@ -18,12 +18,10 @@ The TrashMapr backend is a FastAPI API for a geo-tagged photo application. It us
 | -------------- | ------------------------------------------- |
 | **Framework**  | FastAPI                                     |
 | **Database**   | Google AlloyDB for PostgreSQL + PostGIS     |
-| **ORM**        | SQLAlchemy 2.0 (async) + GeoAlchemy2        |
 | **Migrations** | Alembic                                     |
-| **AI/ML**      | Google Gemini API (gemini-1.5-flash)        |
+| **AI/ML**      | Google Gemini API (gemini-2.5-flash)        |
 | **Storage**    | Google Cloud Storage (GCS)                  |
 | **Auth**       | Authlib for Google OAuth 2.0                |
-| **Validation** | Pydantic V2                                 |
 | **Container**  | Docker & Docker Compose                     |
 
 ## 4. Project Structure

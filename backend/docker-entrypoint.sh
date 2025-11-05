@@ -14,12 +14,14 @@ while [ $retry_count -lt $max_retries ]; do
     if python -c "
 import asyncio
 import sys
-from database import engine
+from sqlalchemy import text
+from app.db.database import engine
 
 async def check():
     try:
         async with engine.connect() as conn:
-            result = await conn.execute('SELECT 1')
+            await conn.execute(text('SELECT 1'))
+            print('Connection successful', file=sys.stderr)
             return True
     except Exception as e:
         print(f'Database not ready: {e}', file=sys.stderr)
@@ -27,14 +29,14 @@ async def check():
 
 result = asyncio.run(check())
 sys.exit(0 if result else 1)
-" 2>/dev/null; then
+"; then
         echo "✓ Database connection successful!"
         break
     fi
 
     retry_count=$((retry_count + 1))
     echo "⏳ Waiting for database... ($retry_count/$max_retries)"
-    sleep 3
+    sleep 2
 done
 
 if [ $retry_count -eq $max_retries ]; then

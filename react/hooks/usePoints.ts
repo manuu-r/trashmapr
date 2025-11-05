@@ -1,14 +1,9 @@
-// Fix: Add triple-slash directive to include Vite client types for import.meta.env
-/// <reference types="vite/client" />
-// Fix: Add a triple-slash directive to include the Google Maps types, which resolves TypeScript errors related to the 'google' namespace.
-/// <reference types="google.maps" />
-
 import { useState, useEffect, useCallback } from 'react';
 import { Point } from '../types';
 import { API_DEBOUNCE_MS } from '../constants';
 
-// TODO: Replace with your actual backend URL
-const API_URL = 'https://your-backend-api.run.app';
+// Fix: Hardcoded the API URL to resolve runtime errors with environment variables.
+const API_URL = 'https://dev.trashmapr.com';
 
 export function usePoints(bounds: google.maps.LatLngBounds | null) {
   const [points, setPoints] = useState<Point[]>([]);

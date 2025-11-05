@@ -1,18 +1,27 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, text
-from sqlalchemy.orm import selectinload
 from typing import List, Optional
-from models import Point, User
-from schemas import PointCreate, PointResponse, LocationSchema, UserCreate, UserResponse
+
+from geoalchemy2 import Geometry
+from geoalchemy2.elements import WKBElement
 from geoalchemy2.functions import (
-    ST_MakePoint,
-    ST_Intersects,
-    ST_MakeEnvelope,
     ST_X,
     ST_Y,
+    ST_AsText,
+    ST_Intersects,
+    ST_MakeEnvelope,
+    ST_MakePoint,
 )
-from geoalchemy2.elements import WKBElement
+from sqlalchemy import cast, select, text
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
+from app.db.models import Point, User
+from app.db.schemas import (
+    LocationSchema,
+    PointCreate,
+    PointResponse,
+    UserCreate,
+    UserResponse,
+)
 
 # ==================== USER OPERATIONS ====================
 
@@ -143,6 +152,66 @@ async def update_user(
     return user
 
 
+async def increment_user_points(
+    db: AsyncSession,
+    user_id: int,
+    points: int = 250,
+) -> Optional[User]:
+    """
+    Increment user points and upload count.
+
+    Args:
+        db: Database session
+        user_id: User ID
+        points: Points to add (default 250 per upload)
+
+    Returns:
+        Updated User object or None
+    """
+    user = await get_user_by_id(db, user_id)
+
+    if not user:
+        return None
+
+    user.total_points += points
+    user.total_uploads += 1
+
+    await db.commit()
+    await db.refresh(user)
+
+    return user
+
+
+async def decrement_user_points(
+    db: AsyncSession,
+    user_id: int,
+    points: int = 250,
+) -> Optional[User]:
+    """
+    Decrement user points and upload count (for deletions).
+
+    Args:
+        db: Database session
+        user_id: User ID
+        points: Points to subtract (default 250 per upload)
+
+    Returns:
+        Updated User object or None
+    """
+    user = await get_user_by_id(db, user_id)
+
+    if not user:
+        return None
+
+    user.total_points = max(0, user.total_points - points)
+    user.total_uploads = max(0, user.total_uploads - 1)
+
+    await db.commit()
+    await db.refresh(user)
+
+    return user
+
+
 # ==================== POINT OPERATIONS ====================
 
 
@@ -216,9 +285,13 @@ async def get_points_in_bounds(
     # Convert to response format
     response_points = []
     for point in points:
-        # Extract lat/lng from geography point
-        lat_query = select(ST_Y(Point.location)).where(Point.id == point.id)
-        lng_query = select(ST_X(Point.location)).where(Point.id == point.id)
+        # Extract lat/lng from geography point (cast to geometry first)
+        lat_query = select(ST_Y(cast(Point.location, Geometry))).where(
+            Point.id == point.id
+        )
+        lng_query = select(ST_X(cast(Point.location, Geometry))).where(
+            Point.id == point.id
+        )
 
         lat_result = await db.execute(lat_query)
         lng_result = await db.execute(lng_query)
@@ -263,9 +336,13 @@ async def get_user_points(db: AsyncSession, user_id: int) -> List[PointResponse]
     # Convert to response format
     response_points = []
     for point in points:
-        # Extract lat/lng from geography point
-        lat_query = select(ST_Y(Point.location)).where(Point.id == point.id)
-        lng_query = select(ST_X(Point.location)).where(Point.id == point.id)
+        # Extract lat/lng from geography point (cast to geometry first)
+        lat_query = select(ST_Y(cast(Point.location, Geometry))).where(
+            Point.id == point.id
+        )
+        lng_query = select(ST_X(cast(Point.location, Geometry))).where(
+            Point.id == point.id
+        )
 
         lat_result = await db.execute(lat_query)
         lng_result = await db.execute(lng_query)
@@ -302,3 +379,25 @@ async def get_point_by_id(db: AsyncSession, point_id: int) -> Optional[Point]:
     query = select(Point).where(Point.id == point_id)
     result = await db.execute(query)
     return result.scalar_one_or_none()
+
+
+async def delete_point(db: AsyncSession, point_id: int) -> bool:
+    """
+    Delete a point from the database.
+
+    Args:
+        db: Database session
+        point_id: Point ID to delete
+
+    Returns:
+        True if deleted successfully, False if not found
+    """
+    point = await get_point_by_id(db, point_id)
+
+    if not point:
+        return False
+
+    await db.delete(point)
+    await db.commit()
+
+    return True

@@ -1,4 +1,3 @@
-
 export interface Point {
   id: number;
   image_url: string;
