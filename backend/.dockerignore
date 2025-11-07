@@ -7,12 +7,14 @@ __pycache__/
 env/
 venv/
 ENV/
-env.bak/
-venv.bak/
+*.egg-info/
+dist/
+build/
 
-# Environment
+# Environment variables
 .env
 .env.local
+.env.*.local
 
 # IDE
 .vscode/
@@ -21,22 +23,26 @@ venv.bak/
 *.swo
 *~
 
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Alembic
-alembic/versions/__pycache__/
+# OS
+.DS_Store
+Thumbs.db
 
 # Git
 .git/
 .gitignore
 
 # Documentation
-*.md
 README.md
+docs/
 
-# OS
-.DS_Store
-Thumbs.db
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Database
+*.db
+*.sqlite
+
+# Logs
+*.log

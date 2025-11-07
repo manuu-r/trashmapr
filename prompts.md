@@ -2,7 +2,7 @@
 
 ## Prompt 1
 
-Generate a complete, minimal modern React 18+ frontend (Vite base) for a public geo-photo density map viewer. No auth or login—purely read-only, fetches data from a FastAPI backend on Cloud Run. Use Leaflet.js (OSM tiles), Leaflet.heat (weighted heatmap), custom thumbnail markers, and react-modal for full-image views. Style responsively with Tailwind CSS (modern, clean: full-screen map, subtle legend for categories 1-4, header/footer).
+Generate a complete, minimal modern React 18+ frontend (Vite base) for a public geo-photo density map viewer. No auth or login — purely read-only, fetches data from a FastAPI backend on Cloud Run. Use Leaflet.js (OSM tiles), Leaflet.heat (weighted heatmap), custom thumbnail markers, and react-modal for full-image views. Style responsively with Tailwind CSS (modern, clean: full-screen map, subtle legend for categories 1-4, header/footer).
 
 **Backend Capabilities (FastAPI on Cloud Run):**
 
@@ -30,12 +30,9 @@ Remove all google default markers.. just area names is enough.. and our markers?
 ## Prompt 5
 
 Include a directions option (Google Maps link) in the image modal.
-
-## Prompt 6
-
 Remove the latitude and longitude fields; keep only timestamp, category, and weight. Redesign the modal for a clean, minimal layout that aligns with the Google Maps UI style.
 
-# Prompt 7
+# Prompt 6
 
 Remove the Ugly header and footer banners. Instead, implement Material UI 3 expressive floating info sections, positioned cleanly and contextually in the right places.
 
@@ -61,3 +58,27 @@ Exception: Failed to upload image: 400 GET https://storage.googleapis.com/storag
 ## Prompt 3
 
 We have FastAPI backend using Cloud SQL as the database and a Cloud Storage bucket for media. A Flutter app consumes this backend for image uploads and Google Auth login. I also have a React app that fetches data from GET endpoints and displays all uploads on a map view. Now, I want to migrate both the backend and the React app to Cloud Run.. can you walk me through the process?
+
+
+## Prompt 4
+
+help me setup cloud cli on mac
+
+Error: Failure while executing; /usr/bin/env /opt/homebrew/share/google-cloud-sdk/bin/gcloud config virtualenv create --python-to-use /opt/homebrew/opt/python@3.13/libexec/bin/python3 exited with 1. Here's the output:
+WARNING: Python 3.9 will be deprecated on January 27th, 2026. Please use Python version 3.10 and up.
+To reinstall gcloud, run:
+$ gcloud components reinstall
+This will also prompt to install a compatible version of Python.
+If you have a compatible Python interpreter installed, you can use it by setting
+the CLOUDSDK_PYTHON environment variable to point to it.
+Creating virtualenv...
+ERROR: (gcloud.config.virtualenv.create) /opt/homebrew/opt/python@3.13/libexec/bin/python3: command not found
+
+## Prompt 5
+help me setup google container registry and cloudrun so that I can deploy my app?
+
+## Prompt 6
+I have a local .env file... how can I securely store it in the cloud? Which service should I use
+
+## Prompt 7
+can you help me set up a secret manager && grant cloud run access to secrets

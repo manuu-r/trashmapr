@@ -14,7 +14,11 @@ class Settings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore"
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+        env_ignore_empty=True,  # Ignore empty env vars
     )
 
     # Database Configuration
@@ -23,13 +27,13 @@ class Settings(BaseSettings):
     # Google Cloud Authentication
     google_oauth_client_id: str = Field(...)
     google_oauth_client_secret: str = Field(...)
-    google_application_credentials: str = Field(...)
+    google_application_credentials: str | None = Field(default=None)
 
     # Google Cloud Services
     gemini_api_key: str = Field(...)
     gcs_bucket_name: str = Field(...)
-    gcp_project_id: str = Field(...)
-    gcp_region: str = Field(...)
+    gcp_project_id: str = Field(default="thinking-avenue-477210-k0")
+    gcp_region: str = Field(default="us-west1")
 
     # Application Configuration
     secret_key: str = Field(..., min_length=32)
@@ -98,9 +102,11 @@ class Settings(BaseSettings):
         """Post-initialization hook to set GOOGLE_APPLICATION_CREDENTIALS env var."""
         import os
 
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = (
-            self.google_application_credentials
-        )
+        # Only set if credentials path is provided (not needed on Cloud Run with service account)
+        if self.google_application_credentials:
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = (
+                self.google_application_credentials
+            )
 
 
 # Global Settings Instance

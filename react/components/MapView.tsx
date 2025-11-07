@@ -1,27 +1,5 @@
-// Fix: Consolidate and declare google namespace to fix missing Google Maps type definitions and resolve duplicate identifier errors.
-declare global {
-  namespace google {
-    namespace maps {
-      class LatLng {
-        constructor(lat: number, lng: number);
-        lat(): number;
-        lng(): number;
-      }
-      class LatLngBounds {
-        getNorthEast(): LatLng;
-        getSouthWest(): LatLng;
-      }
-      class Map {
-        getBounds(): LatLngBounds | null | undefined;
-        getZoom(): number | undefined;
-        setCenter(center: { lat: number; lng: number }): void;
-      }
-      enum ControlPosition {
-        RIGHT_TOP,
-      }
-    }
-  }
-}
+// Fix: Add triple-slash directive for Vite types. Google Maps types are defined globally.
+/// <reference types="vite/client" />
 
 import React, { useState, useCallback, useRef, useMemo } from "react";
 import {
@@ -40,17 +18,12 @@ import {
 } from "../constants";
 import ImageModal from "./ImageModal";
 import LoadingSpinner from "./LoadingSpinner";
+import { GOOGLE_MAPS_API_KEY } from "../config";
 
 const containerStyle = {
   width: "100%",
   height: "100%",
 };
-
-// =================================================================================
-// IMPORTANT: Replace this placeholder with your actual Google Maps API key.
-// You can get a key from the Google Cloud Console: https://console.cloud.google.com/
-// =================================================================================
-const GOOGLE_MAPS_API_KEY = "AIzaSyCQOIANyiFsCTmGA5VFQWvVRiRB35-xIek";
 
 const libraries: "visualization"[] = ["visualization"]; // For HeatmapLayer
 
@@ -95,7 +68,7 @@ const MapView: React.FC = () => {
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: "google-map-script",
-    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY || "",
     libraries,
   });
 
@@ -134,6 +107,17 @@ const MapView: React.FC = () => {
     }));
   }, [points, isLoaded]);
 
+  if (!GOOGLE_MAPS_API_KEY) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gray-700">
+        <p className="text-red-400 font-semibold p-4 bg-gray-800 rounded-lg text-center">
+          Google Maps API key is missing.
+          <br /> Please add VITE_GOOGLE_MAPS_API_KEY to your .env file.
+        </p>
+      </div>
+    );
+  }
+
   if (loadError) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-gray-700">
@@ -148,7 +132,7 @@ const MapView: React.FC = () => {
   return (
     <div className="w-full h-full relative">
       {(loading || error) && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[1001] p-4 bg-black bg-opacity-70 rounded-lg shadow-xl text-center">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[1001] p-4 bg-surface/80 backdrop-blur-sm rounded-2xl shadow-xl text-center">
           {loading && !error && <LoadingSpinner />}
           {error && <p className="text-red-400 font-semibold">{error}</p>}
         </div>
@@ -170,6 +154,7 @@ const MapView: React.FC = () => {
               position: google.maps.ControlPosition.RIGHT_TOP,
             },
             styles: mapStyles,
+            backgroundColor: "#1C1B1F", // Match with surface color
           }}
         >
           {points.length > 0 && (

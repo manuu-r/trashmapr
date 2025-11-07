@@ -137,23 +137,65 @@ class AuthScreen extends StatelessWidget {
                               ),
                             ],
                           ),
-                          child: GoogleSignInButton(
-                            onPressed: () async {
-                              final success = await authService.signIn();
-                              if (!success && context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: const Text(
-                                        'Sign in failed. Please try again.'),
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
+                          child: Column(
+                            children: [
+                              // Show error message if present
+                              if (authService.authError != null)
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .errorContainer,
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                );
-                              }
-                            },
-                            isLoading: authService.isLoading,
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.error_outline,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onErrorContainer,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          authService.authError!,
+                                          style: TextStyle(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onErrorContainer,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              GoogleSignInButton(
+                                onPressed: () async {
+                                  final success = await authService.signIn();
+                                  if (!success && context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          authService.authError ??
+                                              'Sign in failed. Please try again.',
+                                        ),
+                                        backgroundColor:
+                                            Theme.of(context).colorScheme.error,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                                isLoading: authService.isLoading,
+                              ),
+                            ],
                           ),
                         ),
                       ),

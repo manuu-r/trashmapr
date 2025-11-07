@@ -120,7 +120,7 @@ class ApiService {
   // Protected endpoint: Get user's uploads
   Future<List<Point>> getMyUploads(String idToken) async {
     try {
-      final uri = Uri.parse('$baseUrl/my-uploads');
+      final uri = Uri.parse('$baseUrl/points/my-uploads');
 
       final response = await http.get(
         uri,

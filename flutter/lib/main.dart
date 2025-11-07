@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/auth_service.dart';
 import 'services/theme_service.dart';
+import 'services/camera_service.dart'; // Import the new service
 import 'config/app_theme.dart';
 import 'screens/auth_screen.dart';
 import 'screens/map_screen.dart';
@@ -31,6 +33,8 @@ class TrashMaprApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService()),
         ChangeNotifierProvider(create: (_) => ThemeService()),
+        ChangeNotifierProvider(
+            create: (_) => CameraService()), // Add the CameraService provider
       ],
       child: Consumer<ThemeService>(
         builder: (context, themeService, child) {

@@ -1,0 +1,70 @@
+# Python
+backend/__pycache__/
+backend/*.py[cod]
+backend/*$py.class
+backend/*.so
+backend/.Python
+backend/env/
+backend/venv/
+backend/ENV/
+backend/*.egg-info/
+backend/dist/
+backend/build/
+
+# Node.js / React
+react/node_modules/
+react/dist/
+react/.env.local
+react/.env.*.local
+
+# Environment variables
+backend/.env
+backend/.env.local
+backend/.env.*.local
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+docs/
+prompts.md
+
+# Testing
+backend/.pytest_cache/
+backend/.coverage
+backend/htmlcov/
+react/coverage/
+
+# Database
+*.db
+*.sqlite
+
+# Logs
+*.log
+
+# Flutter (not needed in Docker)
+flutter/
+
+# Virtual environments
+trashmapr-env/
+venv/
+env/
+
+# Credentials (included explicitly in docker-compose)
+backend/gcp_creds.json

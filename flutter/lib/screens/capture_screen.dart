@@ -1,11 +1,10 @@
-import 'dart:io';
-import 'dart:ui' as ui;
-import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
+import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
+import '../services/camera_service.dart';
 
 class CaptureScreen extends StatefulWidget {
   const CaptureScreen({super.key});
@@ -16,138 +15,53 @@ class CaptureScreen extends StatefulWidget {
 
 class _CaptureScreenState extends State<CaptureScreen>
     with WidgetsBindingObserver {
-  CameraController? _cameraController;
-  List<CameraDescription>? _cameras;
-  bool _isInitialized = false;
-  bool _isProcessing = false;
-  File? _capturedImage;
-  Position? _currentPosition;
   final ApiService _apiService = ApiService();
-  int _currentCameraIndex = 0;
-  bool _isSwitchingCamera = false;
+  Position? _currentPosition;
+  bool _isProcessing = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _initializeCamera();
+    final cameraService = Provider.of<CameraService>(context, listen: false);
+    cameraService.initializeCamera();
     _getCurrentLocation();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    // Properly dispose camera controller to free buffers
-    _cameraController?.dispose();
-    _cameraController = null;
+    final cameraService = Provider.of<CameraService>(context, listen: false);
+    cameraService.dispose();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final CameraController? cameraController = _cameraController;
+    final cameraService = Provider.of<CameraService>(context, listen: false);
 
-    // App state changed before we got the chance to initialize.
-    if (cameraController == null || !cameraController.value.isInitialized) {
-      return;
-    }
-
-    if (state == AppLifecycleState.inactive) {
-      // Pause camera when app is inactive to prevent buffer issues
-      cameraController.dispose();
+    // Only handle paused and resumed states to avoid unnecessary camera restarts
+    // during brief transitions (like notification shade opening)
+    if (state == AppLifecycleState.paused) {
+      // Pause the camera preview when app goes to background
+      if (cameraService.cameraController != null &&
+          cameraService.cameraController!.value.isInitialized) {
+        cameraService.cameraController!.pausePreview();
+      }
     } else if (state == AppLifecycleState.resumed) {
-      // Resume camera when app comes back
-      _initializeCamera();
-    }
-  }
-
-  Future<void> _initializeCamera() async {
-    try {
-      _cameras = await availableCameras();
-      if (_cameras!.isEmpty) {
-        throw Exception('No cameras available');
-      }
-
-      // Start with rear camera by default (index 0)
-      // User can switch using the flip camera button
-      _cameraController = CameraController(
-        _cameras![_currentCameraIndex],
-        ResolutionPreset.high,
-        enableAudio: false,
-        imageFormatGroup: ImageFormatGroup.jpeg,
-      );
-
-      await _cameraController!.initialize();
-
-      // Reduce image stream to prevent buffer overflow
-      await _cameraController!.setFocusMode(FocusMode.auto);
-
-      // Lock capture orientation to prevent buffer issues during rotation
-      await _cameraController!.lockCaptureOrientation();
-
-      if (mounted) {
-        setState(() {
-          _isInitialized = true;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error initializing camera: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Camera error: $e')));
-      }
-    }
-  }
-
-  Future<void> _switchCamera() async {
-    if (_cameras == null || _cameras!.length < 2 || _isSwitchingCamera) {
-      return;
-    }
-
-    setState(() {
-      _isSwitchingCamera = true;
-      _isInitialized = false;
-    });
-
-    // Dispose current controller
-    await _cameraController?.dispose();
-
-    // Switch to next camera
-    _currentCameraIndex = (_currentCameraIndex + 1) % _cameras!.length;
-
-    // Initialize new camera
-    _cameraController = CameraController(
-      _cameras![_currentCameraIndex],
-      ResolutionPreset.high,
-      enableAudio: false,
-      imageFormatGroup: ImageFormatGroup.jpeg,
-    );
-
-    try {
-      await _cameraController!.initialize();
-
-      // Reduce image stream to prevent buffer overflow
-      await _cameraController!.setFocusMode(FocusMode.auto);
-
-      // Lock capture orientation to prevent buffer issues during rotation
-      await _cameraController!.lockCaptureOrientation();
-
-      if (mounted) {
-        setState(() {
-          _isInitialized = true;
-          _isSwitchingCamera = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error switching camera: $e');
-      if (mounted) {
-        setState(() {
-          _isSwitchingCamera = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Camera switch error: $e')),
-        );
+      // Resume or reinitialize camera when app comes to foreground
+      if (cameraService.cameraController != null &&
+          cameraService.cameraController!.value.isInitialized) {
+        try {
+          cameraService.cameraController!.resumePreview();
+        } catch (e) {
+          debugPrint('Error resuming camera preview: $e');
+          // If resume fails, reinitialize
+          cameraService.initializeCamera();
+        }
+      } else {
+        // Camera not initialized, initialize it
+        cameraService.initializeCamera();
       }
     }
   }
@@ -184,9 +98,8 @@ class _CaptureScreenState extends State<CaptureScreen>
   }
 
   Future<void> _capturePhoto() async {
-    if (_cameraController == null || !_cameraController!.value.isInitialized) {
-      return;
-    }
+    final cameraService = Provider.of<CameraService>(context, listen: false);
+    if (!cameraService.isInitialized) return;
 
     if (_currentPosition == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -196,23 +109,12 @@ class _CaptureScreenState extends State<CaptureScreen>
       return;
     }
 
-    try {
-      final image = await _cameraController!.takePicture();
-      setState(() {
-        _capturedImage = File(image.path);
-      });
-    } catch (e) {
-      debugPrint('Error capturing photo: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Capture error: $e')));
-      }
-    }
+    await cameraService.capturePhoto();
   }
 
   Future<void> _uploadPhoto() async {
-    if (_capturedImage == null || _currentPosition == null) return;
+    final cameraService = Provider.of<CameraService>(context, listen: false);
+    if (cameraService.capturedImage == null || _currentPosition == null) return;
 
     final authService = Provider.of<AuthService>(context, listen: false);
     final token = await authService.getValidToken();
@@ -232,23 +134,16 @@ class _CaptureScreenState extends State<CaptureScreen>
 
     try {
       final response = await _apiService.uploadPhoto(
-        imageFile: _capturedImage!,
+        imageFile: cameraService.capturedImage!,
         lat: _currentPosition!.latitude,
         lng: _currentPosition!.longitude,
         idToken: token,
       );
 
-      // Clean up the captured image file after successful upload
-      if (_capturedImage != null) {
-        _capturedImage!.delete().catchError((e) {
-          debugPrint('Error deleting temp file: $e');
-          return _capturedImage!; // Return the file on error
-        });
-      }
+      cameraService.clearCapturedImage();
 
       setState(() {
         _isProcessing = false;
-        _capturedImage = null;
       });
 
       if (mounted && response != null) {
@@ -258,7 +153,6 @@ class _CaptureScreenState extends State<CaptureScreen>
         final weight = response['weight'];
 
         if (success) {
-          // Refresh user points after successful upload
           await authService.refreshUserData();
 
           if (mounted) {
@@ -282,7 +176,6 @@ class _CaptureScreenState extends State<CaptureScreen>
         }
       }
 
-      // Refresh location for next capture
       _getCurrentLocation();
     } catch (e) {
       setState(() {
@@ -290,7 +183,6 @@ class _CaptureScreenState extends State<CaptureScreen>
       });
 
       if (mounted) {
-        // Parse error message if possible
         String errorMessage = e.toString();
         if (errorMessage.startsWith('Exception: ')) {
           errorMessage = errorMessage.substring(11);
@@ -308,16 +200,8 @@ class _CaptureScreenState extends State<CaptureScreen>
   }
 
   void _cancelCapture() {
-    // Clean up the captured image file
-    if (_capturedImage != null) {
-      _capturedImage!.delete().catchError((e) {
-        debugPrint('Error deleting temp file: $e');
-        return _capturedImage!; // Return the file on error
-      });
-    }
-    setState(() {
-      _capturedImage = null;
-    });
+    final cameraService = Provider.of<CameraService>(context, listen: false);
+    cameraService.clearCapturedImage();
   }
 
   Widget _buildInfoRow(BuildContext context, String label, String value) {
@@ -355,10 +239,7 @@ class _CaptureScreenState extends State<CaptureScreen>
                 Icon(
                   Icons.camera_alt,
                   size: 80,
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primary
-                      .withValues(alpha: 0.5),
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
                 ),
                 const SizedBox(height: 24),
                 Text(
@@ -385,302 +266,358 @@ class _CaptureScreenState extends State<CaptureScreen>
       );
     }
 
-    if (_capturedImage != null) {
-      // Preview captured image - Google Camera style
-      return Scaffold(
-        backgroundColor: Colors.black,
-        body: Stack(
-          children: [
-            // Full-screen image preview
-            Center(
-              child: Image.file(_capturedImage!, fit: BoxFit.contain),
-            ),
-            // Cancel button (top-left)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 16,
-              left: 16,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: _isProcessing ? null : _cancelCapture,
-                  borderRadius: BorderRadius.circular(30),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.close,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
+    return Consumer<CameraService>(
+      builder: (context, cameraService, child) {
+        if (cameraService.capturedImage != null) {
+          return Scaffold(
+            backgroundColor: Colors.black,
+            body: Stack(
+              children: [
+                Center(
+                  child: Image.file(cameraService.capturedImage!,
+                      fit: BoxFit.contain),
                 ),
-              ),
-            ),
-            // Upload button (bottom-right circular FAB)
-            Positioned(
-              bottom: 32,
-              right: 32,
-              child: FloatingActionButton.large(
-                onPressed: _isProcessing ? null : _uploadPhoto,
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                child: _isProcessing
-                    ? const SizedBox(
-                        width: 32,
-                        height: 32,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 3,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.check, size: 36),
-              ),
-            ),
-            // Thumbnail preview in bottom-left corner
-            Positioned(
-              bottom: 32,
-              left: 32,
-              child: GestureDetector(
-                onTap: () {
-                  // Show location info bottom sheet
-                  if (_currentPosition != null) {
-                    showModalBottomSheet(
-                      context: context,
-                      backgroundColor: Colors.transparent,
-                      builder: (context) => Container(
+                Positioned(
+                  top: MediaQuery.of(context).padding.top + 16,
+                  left: 16,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _isProcessing ? null : _cancelCapture,
+                      borderRadius: BorderRadius.circular(30),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surface,
-                          borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(24)),
+                          color: Colors.black.withOpacity(0.5),
+                          shape: BoxShape.circle,
                         ),
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.location_on,
-                                    color:
-                                        Theme.of(context).colorScheme.primary),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Location Details',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleLarge
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            _buildInfoRow(
-                              context,
-                              'Latitude',
-                              _currentPosition!.latitude.toStringAsFixed(6),
-                            ),
-                            const SizedBox(height: 8),
-                            _buildInfoRow(
-                              context,
-                              'Longitude',
-                              _currentPosition!.longitude.toStringAsFixed(6),
-                            ),
-                            const SizedBox(height: 8),
-                            _buildInfoRow(
-                              context,
-                              'Accuracy',
-                              '±${_currentPosition!.accuracy.toStringAsFixed(1)}m',
-                            ),
-                            SizedBox(
-                                height: MediaQuery.of(context).padding.bottom),
-                          ],
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 28,
                         ),
                       ),
-                    );
-                  }
-                },
-                child: Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        blurRadius: 8,
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Stack(
-                      children: [
-                        Image.file(_capturedImage!, fit: BoxFit.cover),
-                        if (_currentPosition != null)
-                          Positioned(
-                            bottom: 4,
-                            right: 4,
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.6),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.gps_fixed,
-                                color: Colors.white,
-                                size: 12,
-                              ),
-                            ),
-                          ),
-                      ],
                     ),
                   ),
                 ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Camera view - Google Camera inspired
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          if (_isInitialized && _cameraController != null)
-            SizedBox.expand(child: CameraPreview(_cameraController!))
-          else
-            const Center(child: CircularProgressIndicator()),
-          // Subtle vignette effect (darken edges)
-          if (_isInitialized)
-            Container(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment.center,
-                  radius: 1.0,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.3),
-                  ],
-                  stops: const [0.5, 1.0],
-                ),
-              ),
-            ),
-          // Minimal GPS indicator (top-left)
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 16,
-            left: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _currentPosition != null
-                        ? Icons.gps_fixed
-                        : Icons.gps_not_fixed,
-                    color: _currentPosition != null
-                        ? Colors.greenAccent
-                        : Colors.orangeAccent,
-                    size: 16,
-                  ),
-                  if (_currentPosition == null) ...[
-                    const SizedBox(width: 6),
-                    const SizedBox(
-                      width: 12,
-                      height: 12,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          // Camera switch button (top-right, subtle)
-          if (_cameras != null && _cameras!.length > 1)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 16,
-              right: 16,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: _isInitialized && !_isSwitchingCamera
-                      ? _switchCamera
-                      : null,
-                  borderRadius: BorderRadius.circular(24),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      shape: BoxShape.circle,
-                    ),
-                    child: _isSwitchingCamera
+                Positioned(
+                  bottom: 32,
+                  right: 32,
+                  child: FloatingActionButton.large(
+                    onPressed: _isProcessing ? null : _uploadPhoto,
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    child: _isProcessing
                         ? const SizedBox(
-                            width: 24,
-                            height: 24,
+                            width: 32,
+                            height: 32,
                             child: CircularProgressIndicator(
-                              strokeWidth: 2,
+                              strokeWidth: 3,
                               color: Colors.white,
                             ),
                           )
-                        : const Icon(
-                            Icons.flip_camera_android,
-                            color: Colors.white,
-                            size: 24,
+                        : const Icon(Icons.check, size: 36),
+                  ),
+                ),
+                Positioned(
+                  bottom: 32,
+                  left: 32,
+                  child: GestureDetector(
+                    onTap: () {
+                      if (_currentPosition != null) {
+                        showModalBottomSheet(
+                          context: context,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) => Container(
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface,
+                              borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(24)),
+                            ),
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.location_on,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Location Details',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleLarge
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                _buildInfoRow(
+                                  context,
+                                  'Latitude',
+                                  _currentPosition!.latitude.toStringAsFixed(6),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildInfoRow(
+                                  context,
+                                  'Longitude',
+                                  _currentPosition!.longitude
+                                      .toStringAsFixed(6),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildInfoRow(
+                                  context,
+                                  'Accuracy',
+                                  '±${_currentPosition!.accuracy.toStringAsFixed(1)}m',
+                                ),
+                                SizedBox(
+                                    height:
+                                        MediaQuery.of(context).padding.bottom),
+                              ],
+                            ),
                           ),
+                        );
+                      }
+                    },
+                    child: Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.5),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Stack(
+                          children: [
+                            Image.file(cameraService.capturedImage!,
+                                fit: BoxFit.cover),
+                            if (_currentPosition != null)
+                              Positioned(
+                                bottom: 4,
+                                right: 4,
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.6),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.gps_fixed,
+                                    color: Colors.white,
+                                    size: 12,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Scaffold(
+          backgroundColor: Colors.black,
+          body: Stack(
+            children: [
+              if (cameraService.isInitialized &&
+                  cameraService.cameraController != null)
+                SizedBox.expand(
+                    child: CameraPreview(cameraService.cameraController!))
+              else if (cameraService.initializationError != null)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.camera_alt_outlined,
+                          size: 80,
+                          color: Colors.white.withOpacity(0.5),
+                        ),
+                        const SizedBox(height: 24),
+                        const Text(
+                          'Camera Error',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Failed to initialize camera. Please try again.',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.7),
+                            fontSize: 16,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton.icon(
+                          onPressed: () => cameraService.initializeCamera(),
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Retry'),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                const Center(child: CircularProgressIndicator()),
+              if (cameraService.isInitialized)
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment.center,
+                      radius: 1.0,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.3),
+                      ],
+                      stops: const [0.5, 1.0],
+                    ),
+                  ),
+                ),
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 16,
+                left: 16,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _currentPosition != null
+                            ? Icons.gps_fixed
+                            : Icons.gps_not_fixed,
+                        color: _currentPosition != null
+                            ? Colors.greenAccent
+                            : Colors.orangeAccent,
+                        size: 16,
+                      ),
+                      if (_currentPosition == null) ...[
+                        const SizedBox(width: 6),
+                        const SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),
-            ),
-          // Large capture button with outer ring (bottom center)
-          Positioned(
-            bottom: 40,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: GestureDetector(
-                onTap: _isInitialized ? _capturePhoto : null,
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white,
-                      width: 4,
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 16,
+                right: 16,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: cameraService.isInitialized
+                        ? () => cameraService.switchCamera()
+                        : null,
+                    borderRadius: BorderRadius.circular(24),
                     child: Container(
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: _isInitialized
-                            ? Colors.white
-                            : Colors.white.withValues(alpha: 0.5),
+                        color: Colors.black.withOpacity(0.5),
                         shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.flip_camera_android,
+                        color: Colors.white,
+                        size: 24,
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
+              Positioned(
+                bottom: 40,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: GestureDetector(
+                    // Disable tap while camera is processing to avoid exhausting ImageReader buffers
+                    onTap: (cameraService.isInitialized &&
+                            !cameraService.isProcessing)
+                        ? _capturePhoto
+                        : null,
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white,
+                          width: 4,
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            // Show the normal capture button when not processing,
+                            // otherwise show a small progress indicator.
+                            if (!cameraService.isProcessing)
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: cameraService.isInitialized
+                                      ? Colors.white
+                                      : Colors.white.withOpacity(0.5),
+                                  shape: BoxShape.circle,
+                                ),
+                              )
+                            else
+                              SizedBox(
+                                width: 36,
+                                height: 36,
+                                child: const CircularProgressIndicator(
+                                  strokeWidth: 3,
+                                  color: Colors.white,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
