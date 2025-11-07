@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
 import '../services/camera_service.dart';
+import '../widgets/rejection_modal.dart';
 
 class CaptureScreen extends StatefulWidget {
   const CaptureScreen({super.key});
@@ -188,13 +189,25 @@ class _CaptureScreenState extends State<CaptureScreen>
           errorMessage = errorMessage.substring(11);
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Upload failed: $errorMessage'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
-        );
+        // Check if this is an image rejection error (HTTP 400 from backend)
+        if (errorMessage.contains('Image rejected') ||
+            errorMessage.contains('trash image') ||
+            errorMessage.contains('outdoor scene')) {
+          // Show minimal modal for rejection
+          RejectionModal.show(
+            context,
+            'Please upload outdoor scenes only. Avoid selfies, memes, screenshots, or indoor photos.',
+          );
+        } else {
+          // Show snackbar for other errors (network, auth, etc.)
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Upload failed: $errorMessage'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
       }
     }
   }

@@ -149,7 +149,7 @@ const MapView: React.FC = () => {
           options={{
             streetViewControl: false,
             mapTypeControl: false,
-            fullscreenControl: false,
+            fullscreenControl: true,
             zoomControlOptions: {
               position: google.maps.ControlPosition.RIGHT_TOP,
             },

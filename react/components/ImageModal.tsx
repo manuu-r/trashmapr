@@ -22,18 +22,18 @@ const ImageModal: React.FC<ImageModalProps> = ({ point, isOpen, onClose }) => {
       isOpen={isOpen}
       onRequestClose={onClose}
       contentLabel="Image Details"
-      className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-surface-container border border-outline rounded-3xl shadow-2xl w-11/12 max-w-sm max-h-[90vh] overflow-hidden flex flex-col focus:outline-none"
-      overlayClassName="fixed inset-0 bg-black bg-opacity-75 z-[2000]"
+      className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-surface border border-outline rounded-3xl shadow-2xl w-11/12 max-w-sm max-h-[90vh] overflow-hidden flex flex-col focus:outline-none"
+      overlayClassName="fixed inset-0 bg-black bg-opacity-90 z-[4000]"
     >
       <div className="text-on-surface relative">
         <img
           src={point.image_url}
           alt={`Geo-tagged photo ${point.id}`}
-          className="w-full h-64 object-cover"
+          className="w-full h-96 object-cover"
         />
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-on-surface-variant bg-surface-container/60 rounded-full p-1 hover:text-on-surface hover:bg-surface-container/80 transition-colors z-10"
+          className="absolute top-4 right-4 text-white bg-black/70 rounded-full p-2 hover:bg-black/90 transition-colors z-10 shadow-lg"
           aria-label="Close modal"
         >
           <svg
@@ -53,12 +53,12 @@ const ImageModal: React.FC<ImageModalProps> = ({ point, isOpen, onClose }) => {
         </button>
       </div>
 
-      <div className="p-6 overflow-y-auto">
+      <div className="px-4 pt-3 pb-4 overflow-y-auto bg-white">
         <a
           href={directionsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-center w-full px-4 py-3 mb-6 bg-primary text-on-primary font-semibold rounded-full hover:opacity-90 transition-opacity duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50"
+          className="flex items-center justify-center w-full px-4 py-2 mb-3 bg-blue-600 text-white font-semibold rounded-full hover:bg-blue-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-md"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -71,11 +71,11 @@ const ImageModal: React.FC<ImageModalProps> = ({ point, isOpen, onClose }) => {
           <span>Get Directions</span>
         </a>
 
-        <div className="space-y-4 text-sm">
+        <div className="space-y-2 text-sm">
           <div className="flex items-center">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 mr-3 text-on-surface-variant"
+              className="h-5 w-5 mr-3 text-gray-600"
               viewBox="0 0 20 20"
               fill="currentColor"
             >
@@ -85,7 +85,7 @@ const ImageModal: React.FC<ImageModalProps> = ({ point, isOpen, onClose }) => {
                 clipRule="evenodd"
               />
             </svg>
-            <span className="text-on-surface">
+            <span className="text-gray-900">
               {new Date(point.timestamp).toLocaleString()}
             </span>
           </div>
@@ -93,7 +93,7 @@ const ImageModal: React.FC<ImageModalProps> = ({ point, isOpen, onClose }) => {
           <div className="flex items-center">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 mr-3 text-on-surface-variant"
+              className="h-5 w-5 mr-3 text-gray-600"
               viewBox="0 0 20 20"
               fill="currentColor"
             >
@@ -115,13 +115,13 @@ const ImageModal: React.FC<ImageModalProps> = ({ point, isOpen, onClose }) => {
           <div className="flex items-center">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 mr-3 text-on-surface-variant"
+              className="h-5 w-5 mr-3 text-gray-600"
               viewBox="0 0 20 20"
               fill="currentColor"
             >
               <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
             </svg>
-            <span className="text-on-surface">
+            <span className="text-gray-900">
               Weight: {point.weight.toFixed(2)}
             </span>
           </div>

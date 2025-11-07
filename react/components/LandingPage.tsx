@@ -1,11 +1,14 @@
-import React from "react";
+import React, { useState } from "react";
 
 import MapView from "./MapView";
 import Legend from "./Legend";
 import Header from "./Header";
 import Footer from "./Footer";
+import MapModal from "./MapModal";
 
 const LandingPage: React.FC = () => {
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -143,16 +146,41 @@ const LandingPage: React.FC = () => {
           </div>
 
           {/* Right: Map Section */}
-          <section className="bg-surface-container border border-outline rounded-3xl shadow-2xl overflow-hidden flex flex-col h-full lg:min-h-[700px]">
+          <section
+            className="bg-surface-container border border-outline rounded-3xl shadow-2xl overflow-hidden flex flex-col h-full lg:min-h-[700px] cursor-pointer hover:shadow-3xl transition-shadow duration-300 group"
+            onClick={() => setIsMapModalOpen(true)}
+          >
             <div className="p-8">
-              <h3 className="text-3xl font-semibold text-on-surface">
+              <h3 className="text-3xl font-semibold text-on-surface group-hover:text-primary transition-colors duration-300">
                 Your Contributions in Action
               </h3>
             </div>
-            <div className="flex-1 w-full relative min-h-[60vh]">
+            <div className="flex-1 w-full relative min-h-[60vh] pointer-events-none">
               <MapView />
               <div className="absolute top-4 left-4 z-[100] bg-surface/90 backdrop-blur-lg border border-outline rounded-2xl shadow-xl">
                 <Legend />
+              </div>
+              {/* Expand hint overlay */}
+              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 flex items-center justify-center">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-surface-container/90 backdrop-blur-md px-6 py-3 rounded-full shadow-lg">
+                  <span className="text-on-surface font-semibold flex items-center gap-2">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+                      />
+                    </svg>
+                    Click to expand
+                  </span>
+                </div>
               </div>
             </div>
           </section>
@@ -160,6 +188,12 @@ const LandingPage: React.FC = () => {
       </main>
 
       <Footer />
+
+      {/* Fullscreen Map Modal */}
+      <MapModal
+        isOpen={isMapModalOpen}
+        onClose={() => setIsMapModalOpen(false)}
+      />
     </div>
   );
 };
