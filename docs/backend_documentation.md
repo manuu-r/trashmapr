@@ -2,13 +2,13 @@
 
 ## 1. Overview
 
-The TrashMapr backend is a FastAPI API for a geo-tagged photo application. It uses Google's Gemini AI to analyze user-uploaded images for "trash" content and categorizes them by density. The entire system is designed for Google Cloud Platform, using AlloyDB, Google Cloud Storage (GCS), and the Gemini API.
+The TrashMapr backend is a FastAPI API for a geo-tagged photo application. It uses Google's Gemini AI to analyze user-uploaded images for "trash" content and categorizes them by density. The entire system is designed for Google Cloud Platform, using Cloud SQL (PostgreSQL), Google Cloud Storage (GCS), and the Gemini API.
 
 ## 2. Features
 
 -   **Google OAuth 2.0:** Secure user authentication.
 -   **AI-Powered Image Analysis:** Rejects invalid images (selfies, memes) and rates valid scenes on a 1-4 density scale using Gemini.
--   **Geospatial Database:** Stores geo-tagged points in a PostGIS-enabled AlloyDB for efficient map-based queries.
+-   **Geospatial Database:** Stores geo-tagged points in a PostGIS-enabled PostgreSQL database for efficient map-based queries.
 -   **Cloud Storage:** Uploads all images to a GCS bucket.
 -   **Containerized:** Fully containerized with Docker for easy deployment.
 
@@ -17,11 +17,11 @@ The TrashMapr backend is a FastAPI API for a geo-tagged photo application. It us
 | Category       | Technology                                  |
 | -------------- | ------------------------------------------- |
 | **Framework**  | FastAPI                                     |
-| **Database**   | Google AlloyDB for PostgreSQL + PostGIS     |
+| **Database**   | Google Cloud SQL (PostgreSQL) + PostGIS     |
 | **Migrations** | Alembic                                     |
-| **AI/ML**      | Google Gemini API (gemini-2.5-flash)        |
+| **AI/ML**      | Google Gemini API (gemini-2.0-flash-exp)    |
 | **Storage**    | Google Cloud Storage (GCS)                  |
-| **Auth**       | Authlib for Google OAuth 2.0                |
+| **Auth**       | Google OAuth 2.0                            |
 | **Container**  | Docker & Docker Compose                     |
 
 ## 4. Project Structure

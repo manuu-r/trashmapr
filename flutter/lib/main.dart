@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'services/auth_service.dart';
 import 'services/theme_service.dart';
-import 'services/camera_service.dart'; // Import the new service
+import 'services/camera_service.dart';
+import 'services/pending_uploads_service.dart';
+import 'services/fcm_service.dart';
 import 'config/app_theme.dart';
 import 'screens/auth_screen.dart';
 import 'screens/map_screen.dart';
@@ -21,6 +24,17 @@ Future<void> main() async {
     debugPrint('Warning: .env file not found. Using default values.');
   }
 
+  // Initialize Firebase
+  try {
+    await Firebase.initializeApp();
+    debugPrint('Firebase initialized successfully');
+
+    // Set background message handler
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  } catch (e) {
+    debugPrint('Warning: Firebase initialization failed: $e');
+  }
+
   runApp(const TrashMaprApp());
 }
 
@@ -33,8 +47,8 @@ class TrashMaprApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService()),
         ChangeNotifierProvider(create: (_) => ThemeService()),
-        ChangeNotifierProvider(
-            create: (_) => CameraService()), // Add the CameraService provider
+        ChangeNotifierProvider(create: (_) => CameraService()),
+        ChangeNotifierProvider(create: (_) => PendingUploadsService()),
       ],
       child: Consumer<ThemeService>(
         builder: (context, themeService, child) {
@@ -78,6 +92,18 @@ class _MainNavigatorState extends State<MainNavigator> {
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    _initializeFCM();
+  }
+
+  /// Initialize FCM service for push notifications
+  Future<void> _initializeFCM() async {
+    try {
+      final fcmService = FCMService();
+      await fcmService.initialize();
+      debugPrint('MainNavigator: FCM initialized');
+    } catch (e) {
+      debugPrint('MainNavigator: FCM initialization error: $e');
+    }
   }
 
   final List<Widget> _screens = const [

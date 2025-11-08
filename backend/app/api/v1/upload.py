@@ -1,126 +1,86 @@
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.crud import (
-    create_point,
     decrement_user_points,
     delete_point,
     get_point_by_id,
-    increment_user_points,
 )
 from app.db.database import get_db
 from app.db.models import User
-from app.db.schemas import PointCreate, UploadResponse
 from app.services.auth import get_current_user
-from app.services.gemini_service import gemini_service
 from app.services.storage_service import storage_service
 
 router = APIRouter()
 
 
-@router.post("", response_model=UploadResponse)
-async def upload_image(
-    file: UploadFile = File(...),
+@router.post("/signed-url")
+async def generate_signed_url(
     lat: float = Query(..., ge=-90, le=90, description="Latitude"),
     lng: float = Query(..., ge=-180, le=180, description="Longitude"),
+    content_type: str = Query(
+        "image/jpeg", regex="^image/(jpeg|jpg|png)$", description="Image MIME type"
+    ),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
 ):
     """
-    Upload an image with GPS location (protected endpoint).
+    Generate a signed URL for direct client upload to GCS (protected endpoint).
+
+    This endpoint allows clients to upload images directly to Google Cloud Storage
+    without going through the backend server. The signed URL includes custom metadata
+    (user_id, latitude, longitude) that will trigger the processing worker via Pub/Sub.
 
     Workflow:
-    1. Upload image to GCS
-    2. Analyze with Gemini API
-    3. If trash, reject and return error
-    4. If valid, save to database with category and weight
+    1. Client requests signed URL with GPS coordinates
+    2. Backend generates unique filename and signed URL with metadata
+    3. Client uploads image directly to GCS using the signed URL
+    4. GCS triggers Pub/Sub notification
+    5. Worker processes the image asynchronously
 
     Args:
-        file: Image file
         lat: Latitude coordinate
         lng: Longitude coordinate
+        content_type: MIME type of the image (default: image/jpeg)
         current_user: Authenticated user object
 
     Returns:
-        Upload response with point details
+        upload_url: Signed URL for PUT request
+        file_name: Generated filename for tracking
+        expires_in: Seconds until URL expires (900 = 15 minutes)
     """
     print(
-        f"Upload request - User: {current_user.email}, Lat: {lat}, Lng: {lng}, File: {file.filename}, Content-Type: {file.content_type}"
+        f"Signed URL request - User: {current_user.email}, Lat: {lat}, Lng: {lng}, Content-Type: {content_type}"
     )
 
-    # Validate file type
-    if not file.content_type or not file.content_type.startswith("image/"):
-        print(f"Invalid file type: {file.content_type}")
-        raise HTTPException(
-            status_code=400, detail="Invalid file type. Only images are allowed."
-        )
-
     try:
-        # Read image bytes
-        print("Reading image bytes...")
-        image_bytes = await file.read()
-        print(f"Image size: {len(image_bytes)} bytes")
+        # Generate unique filename
+        file_name = storage_service.generate_filename(current_user.email)
+        print(f"Generated filename: {file_name}")
 
-        # Validate and categorize with Gemini
-        print("Validating with Gemini...")
-        is_valid, category, weight = await gemini_service.validate_and_categorize(
-            image_bytes
-        )
-        print(
-            f"Gemini result - Valid: {is_valid}, Category: {category}, Weight: {weight}"
-        )
-
-        if not is_valid:
-            print("Image rejected by Gemini")
-            raise HTTPException(
-                status_code=400,
-                detail="Image rejected: This appears to be a trash image (selfie, meme, or non-scene image). Please upload outdoor scene photos only.",
-            )
-
-        # Upload to GCS (use email for folder organization)
-        print(f"Uploading to GCS for user: {current_user.email}")
-        image_url = await storage_service.upload_image(
-            image_bytes, current_user.email, file.content_type
-        )
-        print(f"Uploaded to: {image_url}")
-
-        # Create point in database
-        print("Creating point in database...")
-        point_data = PointCreate(
+        # Generate signed URL with custom metadata
+        signed_url, required_headers = storage_service.generate_signed_upload_url(
+            file_name=file_name,
+            content_type=content_type,
             user_id=current_user.id,
-            image_url=image_url,
-            lat=lat,
-            lng=lng,
-            weight=weight,
-            category=category,
-            is_trash=False,
+            latitude=lat,
+            longitude=lng,
         )
+        print(f"Generated signed URL (expires in 15 minutes)")
 
-        new_point = await create_point(db, point_data)
-        print(f"Point created with ID: {new_point.id}")
+        return {
+            "upload_url": signed_url,
+            "file_name": file_name,
+            "expires_in": 900,
+            "required_headers": required_headers,
+        }
 
-        # Increment user points (250 points per upload)
-        await increment_user_points(db, current_user.id, points=250)
-        print(f"User {current_user.email} earned 250 points")
-
-        return UploadResponse(
-            success=True,
-            message="Image uploaded successfully",
-            point_id=new_point.id,
-            category=category,
-            weight=weight,
-        )
-
-    except HTTPException as he:
-        print(f"HTTPException: {he.status_code} - {he.detail}")
-        raise
     except Exception as e:
         import traceback
 
-        print(f"Upload error: {e}")
+        print(f"Signed URL generation error: {e}")
         print(traceback.format_exc())
         raise HTTPException(
-            status_code=500, detail=f"Failed to process upload: {str(e)}"
+            status_code=500, detail=f"Failed to generate signed URL: {str(e)}"
         )
 
 

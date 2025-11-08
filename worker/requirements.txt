@@ -1,0 +1,18 @@
+# Web Framework
+fastapi==0.121.0
+uvicorn[standard]==0.38.0
+
+# Database
+sqlalchemy[asyncio]==2.0.44
+asyncpg==0.30.0
+geoalchemy2==0.18.0
+
+# Google Cloud
+google-cloud-storage==3.4.0
+google-genai==1.48.0
+firebase-admin==6.5.0
+
+# Configuration & Utilities
+pydantic[email]==2.12.2
+pydantic-settings==2.7.0
+python-dotenv==1.2.1

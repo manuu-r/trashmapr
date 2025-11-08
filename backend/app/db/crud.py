@@ -212,6 +212,35 @@ async def decrement_user_points(
     return user
 
 
+async def update_user_fcm_token(
+    db: AsyncSession,
+    user_id: int,
+    fcm_token: Optional[str],
+) -> Optional[User]:
+    """
+    Update user's FCM token for push notifications.
+
+    Args:
+        db: Database session
+        user_id: User ID
+        fcm_token: Firebase Cloud Messaging token (None to remove)
+
+    Returns:
+        Updated User object or None
+    """
+    user = await get_user_by_id(db, user_id)
+
+    if not user:
+        return None
+
+    user.fcm_token = fcm_token
+
+    await db.commit()
+    await db.refresh(user)
+
+    return user
+
+
 # ==================== POINT OPERATIONS ====================
 
 

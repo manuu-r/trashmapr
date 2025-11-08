@@ -1,16 +1,15 @@
 from typing import Optional, Tuple
 
+from app.core.config import settings
 from google import genai
 from google.genai import types
 
-from app.core.config import settings
-
 
 class GeminiService:
-    """Service for analyzing images using Google Gemini API (New SDK)."""
+    """Service for analyzing images using Google Gemini API."""
 
     def __init__(self):
-        # Initialize the new Google Gen AI client
+        # Initialize the new Google Gen AI client with API key for AI Studio
         self.client = genai.Client(api_key=settings.gemini_api_key)
         self.model_name = "gemini-2.5-flash"
 
@@ -34,27 +33,42 @@ class GeminiService:
             # Prompt for Gemini
             prompt = """Analyze this image carefully:
 
-1. First, determine if this is a TRASH image (invalid upload). TRASH includes:
-   - Selfies or portraits of people
-   - Memes, screenshots, or text-heavy images
-   - Close-up photos of objects (not outdoor scenes)
-   - Garbage or inappropriate content
-   - Indoor scenes (we only want outdoor scenes)
+            First, decide if this is a TRASH image (valid trash photo) or NOT TRASH (invalid upload).
+            Mark as NOT TRASH if the image is:
 
-2. If it's NOT trash, rate the density/crowding level of the scene from 1-4:
-   - 1 = Low/Sparse: Very few objects or people, open space, minimal activity
-   - 2 = Medium: Moderate number of objects/people, some activity
-   - 3 = High: Many objects/people, busy scene, significant activity
-   - 4 = Very High: Extremely crowded, dense with objects/people, very busy
+            A selfie or portrait of a person
 
-OUTPUT ONLY ONE OF THESE:
-- 'TRASH' if the image is invalid
-- '1' if valid scene with low density
-- '2' if valid scene with medium density
-- '3' if valid scene with high density
-- '4' if valid scene with very high density
+            A meme, screenshot, or text-heavy image
 
-Output only the single word or number, nothing else."""
+            An indoor scene
+
+            A random object not related to waste
+
+            Any inappropriate or irrelevant content
+
+            If it IS a valid trash image, rate the trash amount/weight from 1–4:
+
+            1 = Small / Light Trash: A few scattered items, minimal waste
+
+            2 = Moderate Trash: Noticeable pile or bag, moderate amount
+
+            3 = Heavy Trash: Large pile, multiple bags, visibly dense waste
+
+            4 = Massive Trash: Huge dump site, overflowing bins, very large accumulation
+
+            OUTPUT ONLY ONE OF THE FOLLOWING:
+
+            'NOT TRASH' – if the image is invalid or irrelevant
+
+            '1' – small/light trash
+
+            '2' – moderate trash
+
+            '3' – heavy trash
+
+            '4' – massive trash
+
+            Output only the single word or number, nothing else."""
 
             # Call Gemini API with new SDK
             response = self.client.models.generate_content(

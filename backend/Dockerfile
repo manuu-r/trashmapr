@@ -21,8 +21,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Expose port
-EXPOSE 8000
+# Expose port (Cloud Run uses PORT env var)
+EXPOSE 8080
 
 # Create entrypoint script
 COPY docker-entrypoint.sh /docker-entrypoint.sh
@@ -31,5 +31,5 @@ RUN chmod +x /docker-entrypoint.sh
 # Run entrypoint script
 ENTRYPOINT ["/docker-entrypoint.sh"]
 
-# Default command (can be overridden)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Default command - use PORT env var with fallback to 8080 (Cloud Run requirement)
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}

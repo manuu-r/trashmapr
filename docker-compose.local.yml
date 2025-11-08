@@ -1,0 +1,92 @@
+version: "3.8"
+
+# Local testing setup for TrashMapr
+# Runs backend + worker + Cloudflare tunnel for HTTPS access from Flutter
+
+services:
+  # Backend API - handles auth and signed URLs
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trashmapr-api
+    env_file:
+      - backend/.env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./backend/gcp_creds.json:/tmp/gcp_creds.json:ro
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp_creds.json
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - trashmapr-network
+
+  # Cloudflare Tunnel - exposes backend via HTTPS for Flutter
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: trashmapr-tunnel
+    command: tunnel --no-autoupdate run
+    env_file:
+      - backend/.env
+    restart: unless-stopped
+    depends_on:
+      - api
+    networks:
+      - trashmapr-network
+
+  # Worker - processes images via Pub/Sub
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: trashmapr-worker
+    ports:
+      - "8081:8080"
+    env_file:
+      - ./worker/.env
+    volumes:
+      - ./worker:/app
+      - ./backend/gcp_creds.json:/tmp/gcp_creds.json:ro
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp_creds.json
+      - PORT=8080
+      - DEBUG=True
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - trashmapr-network
+
+  # GCS Notification Simulator
+  # Watches for uploads and triggers worker
+  gcs-simulator:
+    image: google/cloud-sdk:alpine
+    container_name: trashmapr-gcs-simulator
+    platform: linux/amd64
+    volumes:
+      - ./simulate-gcs-notification.sh:/scripts/simulate.sh
+    environment:
+      - WORKER_URL=http://worker:8080
+      - GCS_BUCKET_NAME=${GCS_BUCKET_NAME}
+    command: /bin/sh -c "apk add --no-cache jq curl && /bin/sh /scripts/simulate.sh"
+    depends_on:
+      - worker
+    networks:
+      - trashmapr-network
+
+networks:
+  trashmapr-network:
+    name: trashmapr-network
+    driver: bridge

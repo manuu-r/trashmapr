@@ -42,6 +42,93 @@ class ApiService {
     }
   }
 
+  // Protected endpoint: Get signed URL for direct GCS upload
+  Future<Map<String, dynamic>> getSignedUploadUrl({
+    required double lat,
+    required double lng,
+    required String idToken,
+    String contentType = 'image/jpeg',
+  }) async {
+    try {
+      debugPrint(
+          'Requesting signed URL for: lat=$lat, lng=$lng, contentType=$contentType');
+
+      final uri = Uri.parse('$baseUrl/upload/signed-url').replace(
+        queryParameters: {
+          'lat': lat.toString(),
+          'lng': lng.toString(),
+          'content_type': contentType,
+        },
+      );
+
+      final response = await http.post(
+        uri,
+        headers: {'Authorization': 'Bearer $idToken'},
+      );
+
+      debugPrint('Signed URL response: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        debugPrint(
+            'Got signed URL (expires in ${jsonResponse['expires_in']}s)');
+        return jsonResponse;
+      } else if (response.statusCode == 401) {
+        throw Exception('Authentication failed. Please sign in again.');
+      } else {
+        throw Exception(
+          'Failed to get signed URL: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      debugPrint('Error getting signed URL: $e');
+      rethrow;
+    }
+  }
+
+  // Direct GCS upload using signed URL
+  Future<void> uploadToGCS({
+    required String signedUrl,
+    required File imageFile,
+    required String contentType,
+    Map<String, String>? requiredHeaders,
+  }) async {
+    try {
+      debugPrint('Uploading to GCS with signed URL...');
+
+      final bytes = await imageFile.readAsBytes();
+      debugPrint('Image size: ${bytes.length} bytes');
+
+      // Build headers - include metadata headers from backend
+      final headers = {
+        'Content-Type': contentType,
+        'Content-Length': bytes.length.toString(),
+        ...?requiredHeaders, // Spread required metadata headers
+      };
+
+      debugPrint('Upload headers: $headers');
+
+      final response = await http.put(
+        Uri.parse(signedUrl),
+        headers: headers,
+        body: bytes,
+      );
+
+      debugPrint('GCS upload response: ${response.statusCode}');
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception(
+          'Failed to upload to GCS: ${response.statusCode} - ${response.body}',
+        );
+      }
+
+      debugPrint('Upload to GCS successful!');
+    } catch (e) {
+      debugPrint('Error uploading to GCS: $e');
+      rethrow;
+    }
+  }
+
   // Protected endpoint: Upload photo with GPS
   Future<Map<String, dynamic>?> uploadPhoto({
     required File imageFile,
@@ -170,6 +257,60 @@ class ApiService {
     } catch (e) {
       debugPrint('Error reporting point: $e');
       return false;
+    }
+  }
+
+  // Protected endpoint: Register FCM token for push notifications
+  Future<void> registerFCMToken(String fcmToken, String idToken) async {
+    try {
+      debugPrint('Registering FCM token with backend');
+
+      final uri = Uri.parse('$baseUrl/notifications/register-token');
+
+      final response = await http.post(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $idToken',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({'fcm_token': fcmToken}),
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('FCM token registered successfully');
+      } else {
+        throw Exception(
+          'Failed to register FCM token: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      debugPrint('Error registering FCM token: $e');
+      rethrow;
+    }
+  }
+
+  // Protected endpoint: Unregister FCM token (on logout)
+  Future<void> unregisterFCMToken(String idToken) async {
+    try {
+      debugPrint('Unregistering FCM token from backend');
+
+      final uri = Uri.parse('$baseUrl/notifications/unregister-token');
+
+      final response = await http.delete(
+        uri,
+        headers: {'Authorization': 'Bearer $idToken'},
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('FCM token unregistered successfully');
+      } else {
+        throw Exception(
+          'Failed to unregister FCM token: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      debugPrint('Error unregistering FCM token: $e');
+      rethrow;
     }
   }
 }

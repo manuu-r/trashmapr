@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.db.database import init_db
+from app.services.fcm_service import initialize_firebase
 
 # Initialize FastAPI app with settings from config
 app = FastAPI(
@@ -30,8 +31,9 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize database connection on startup."""
+    """Initialize database connection and Firebase on startup."""
     await init_db()
+    initialize_firebase()
     print("Application startup complete")
 
 
