@@ -1,5 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import '../models/pending_upload.dart';
@@ -33,8 +34,13 @@ class _CaptureScreenState extends State<CaptureScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    final cameraService = Provider.of<CameraService>(context, listen: false);
-    cameraService.dispose();
+    // Safely dispose camera service if context is still available
+    try {
+      final cameraService = Provider.of<CameraService>(context, listen: false);
+      cameraService.dispose();
+    } catch (e) {
+      debugPrint('Error disposing camera service: $e');
+    }
     super.dispose();
   }
 
@@ -104,17 +110,35 @@ class _CaptureScreenState extends State<CaptureScreen>
     if (!cameraService.isInitialized) return;
 
     if (_currentPosition == null) {
+      HapticFeedback.mediumImpact();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Waiting for GPS location...')),
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.gps_not_fixed, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Waiting for GPS location...'),
+            ],
+          ),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       );
       await _getCurrentLocation();
       return;
     }
 
+    // Haptic feedback on capture
+    HapticFeedback.mediumImpact();
     await cameraService.capturePhoto();
   }
 
   Future<void> _uploadPhoto() async {
+    // Prevent multiple uploads
+    if (_isProcessing) return;
+
     final cameraService = Provider.of<CameraService>(context, listen: false);
     if (cameraService.capturedImage == null || _currentPosition == null) return;
 
@@ -150,6 +174,8 @@ class _CaptureScreenState extends State<CaptureScreen>
 
     pendingService.addPendingUpload(pendingUpload);
 
+    // Set processing state and haptic feedback
+    HapticFeedback.mediumImpact();
     setState(() {
       _isProcessing = true;
     });
@@ -200,13 +226,24 @@ class _CaptureScreenState extends State<CaptureScreen>
       }
 
       // Step 3: Show success message (processing happens in background)
+      HapticFeedback.lightImpact();
       scaffoldMessenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Upload complete! Analyzing image...',
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text('Upload complete! Analyzing image...'),
+              ),
+            ],
           ),
           backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          duration: const Duration(seconds: 2),
         ),
       );
 
@@ -218,8 +255,8 @@ class _CaptureScreenState extends State<CaptureScreen>
 
       _getCurrentLocation();
     } catch (e) {
-      // Update pending upload to failed status
-      pendingService.updateUploadStatus(localId, PendingUploadStatus.failed);
+      // Remove the failed upload from pending list
+      pendingService.removePendingUpload(localId);
 
       if (mounted) {
         setState(() {
@@ -232,11 +269,24 @@ class _CaptureScreenState extends State<CaptureScreen>
         errorMessage = errorMessage.substring(11);
       }
 
-      // Show snackbar for errors
+      // Show snackbar for errors with haptic feedback
+      HapticFeedback.mediumImpact();
       scaffoldMessenger.showSnackBar(
         SnackBar(
-          content: Text('Upload failed: $errorMessage'),
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text('Upload failed: $errorMessage'),
+              ),
+            ],
+          ),
           backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           duration: const Duration(seconds: 4),
         ),
       );
@@ -616,44 +666,62 @@ class _CaptureScreenState extends State<CaptureScreen>
                             !cameraService.isProcessing)
                         ? _capturePhoto
                         : null,
-                    child: Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white,
-                          width: 4,
-                        ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(4),
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            // Show the normal capture button when not processing,
-                            // otherwise show a small progress indicator.
-                            if (!cameraService.isProcessing)
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: cameraService.isInitialized
-                                      ? Colors.white
-                                      : Colors.white.withOpacity(0.5),
-                                  shape: BoxShape.circle,
-                                ),
-                              )
-                            else
-                              SizedBox(
-                                width: 36,
-                                height: 36,
-                                child: const CircularProgressIndicator(
-                                  strokeWidth: 3,
-                                  color: Colors.white,
-                                ),
+                    child: TweenAnimationBuilder<double>(
+                      duration: const Duration(milliseconds: 1500),
+                      curve: Curves.easeInOut,
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      builder: (context, value, child) {
+                        return Transform.scale(
+                          scale: 1.0 + (0.05 * (0.5 - (value - 0.5).abs())),
+                          child: Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 4,
                               ),
-                          ],
-                        ),
-                      ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.white.withOpacity(
+                                      0.3 * (0.5 - (value - 0.5).abs())),
+                                  blurRadius: 20,
+                                  spreadRadius: 5,
+                                ),
+                              ],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  // Show the normal capture button when not processing,
+                                  // otherwise show a small progress indicator.
+                                  if (!cameraService.isProcessing)
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: cameraService.isInitialized
+                                            ? Colors.white
+                                            : Colors.white.withOpacity(0.5),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    )
+                                  else
+                                    const SizedBox(
+                                      width: 36,
+                                      height: 36,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 3,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ),

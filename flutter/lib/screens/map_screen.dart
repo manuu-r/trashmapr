@@ -142,17 +142,21 @@ class _MapScreenState extends State<MapScreen> {
         neLng: bounds.northeast.longitude,
       );
 
-      setState(() {
-        _points = points;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _points = points;
+          _isLoading = false;
+        });
 
-      await _updateMarkers();
-      _updateHeatmap();
+        await _updateMarkers();
+        _updateHeatmap();
+      }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading points: $e')),
@@ -196,9 +200,11 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
-    setState(() {
-      _markers = markers;
-    });
+    if (mounted) {
+      setState(() {
+        _markers = markers;
+      });
+    }
   }
 
   // Create clean circular thumbnail marker like Google Maps
@@ -360,6 +366,8 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _updateHeatmap() {
+    if (!mounted) return;
+
     if (!_showHeatmap || _points.isEmpty) {
       setState(() {
         _heatmaps = {};
@@ -397,9 +405,11 @@ class _MapScreenState extends State<MapScreen> {
       dissipating: true,
     );
 
-    setState(() {
-      _heatmaps = {heatmap};
-    });
+    if (mounted) {
+      setState(() {
+        _heatmaps = {heatmap};
+      });
+    }
   }
 
   Color _getCategoryColor(int category) {

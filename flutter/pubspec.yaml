@@ -1,7 +1,7 @@
 name: trashmapr
 description: Geo-photo density mapping app with AI classification
 publish_to: "none"
-version: 0.0.1+4
+version: 0.1.1+6
 
 environment:
   sdk: ">=3.0.0 <4.0.0"

@@ -36,6 +36,9 @@ Remove the latitude and longitude fields; keep only timestamp, category, and wei
 
 Remove the Ugly header and footer banners. Instead, implement Material UI 3 expressive floating info sections, positioned cleanly and contextually in the right places.
 
+
+NOTE: Then I use Gemini-cli through zed and claude-code to improve and fix bugs.
+
 ---
 
 # Google chat Prompts (backend & cloudrun)
@@ -96,3 +99,14 @@ can you help me set up a secret manager && grant cloud run access to secrets
 
 First help me setup all google cloud requirements.
 (follow up prompts to setup bucket, pub/sub, service accounts and permissions)
+
+## Prompt 9
+
+Currently have Setup:
+Cloud SQL (Database)
+Cloud Storage Bucket
+Pub/Sub
+
+I’m not sure what permissions are currently assigned to these resources. I’ve attached the required architecture(my system arch was attached).  help me configure the correct permissions and deploy? (no code, just walk me through google cloud part.)
+
+follow up prompt - using one shared service account for both backend+worker

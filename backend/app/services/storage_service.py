@@ -2,6 +2,8 @@ import random
 import string
 from datetime import datetime, timedelta
 
+from google.auth import default
+from google.auth.transport import requests as auth_requests
 from google.cloud import storage
 
 from app.core.config import settings
@@ -13,6 +15,10 @@ class StorageService:
     def __init__(self):
         self.client = storage.Client()
         self.bucket = self.client.bucket(settings.gcs_bucket_name)
+
+        # Get default credentials for IAM signing on Cloud Run
+        self.credentials, _ = default()
+        self.auth_request = auth_requests.Request()
 
     async def delete_image(self, image_url: str) -> bool:
         """
@@ -100,13 +106,20 @@ class StorageService:
             f"x-goog-meta-{key}": value for key, value in metadata.items()
         }
 
-        # Generate signed URL for PUT operation
+        # For Cloud Run: Use IAM-based signing since compute engine credentials don't have private keys
+        # Refresh credentials to get a valid access token
+        if not self.credentials.valid:
+            self.credentials.refresh(self.auth_request)
+
+        # Generate signed URL for PUT operation using IAM signing
         signed_url = blob.generate_signed_url(
             version="v4",
-            expiration=timedelta(minutes=5),
+            expiration=timedelta(minutes=15),
             method="PUT",
             content_type=content_type,
             headers=required_headers,
+            service_account_email=self.credentials.service_account_email,
+            access_token=self.credentials.token,
         )
 
         return signed_url, required_headers

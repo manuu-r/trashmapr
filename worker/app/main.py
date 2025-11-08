@@ -125,9 +125,7 @@ async def process_upload(request: Request):
 
         # Analyze with Gemini
         logger.info("Analyzing image with Gemini API...")
-        is_valid, category, weight = await gemini_service.validate_and_categorize(
-            image_bytes
-        )
+        is_valid, category, weight = await gemini_service.analyze_image(image_bytes)
         logger.info(
             f"Gemini result - Valid: {is_valid}, Category: {category}, Weight: {weight}"
         )

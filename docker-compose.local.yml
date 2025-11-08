@@ -11,7 +11,7 @@ services:
       dockerfile: Dockerfile
     container_name: trashmapr-api
     env_file:
-      - backend/.env
+      - .env
     ports:
       - "8000:8000"
     volumes:
@@ -35,7 +35,7 @@ services:
     container_name: trashmapr-tunnel
     command: tunnel --no-autoupdate run
     env_file:
-      - backend/.env
+      - .env
     restart: unless-stopped
     depends_on:
       - api
@@ -51,7 +51,7 @@ services:
     ports:
       - "8081:8080"
     env_file:
-      - ./worker/.env
+      - .env
     volumes:
       - ./worker:/app
       - ./backend/gcp_creds.json:/tmp/gcp_creds.json:ro
