@@ -1,11 +1,13 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
+import '../models/pending_upload.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
 import '../services/camera_service.dart';
-import '../widgets/rejection_modal.dart';
+import '../services/pending_uploads_service.dart';
 
 class CaptureScreen extends StatefulWidget {
   const CaptureScreen({super.key});
@@ -32,8 +34,13 @@ class _CaptureScreenState extends State<CaptureScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    final cameraService = Provider.of<CameraService>(context, listen: false);
-    cameraService.dispose();
+    // Safely dispose camera service if context is still available
+    try {
+      final cameraService = Provider.of<CameraService>(context, listen: false);
+      cameraService.dispose();
+    } catch (e) {
+      debugPrint('Error disposing camera service: $e');
+    }
     super.dispose();
   }
 
@@ -103,112 +110,186 @@ class _CaptureScreenState extends State<CaptureScreen>
     if (!cameraService.isInitialized) return;
 
     if (_currentPosition == null) {
+      HapticFeedback.mediumImpact();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Waiting for GPS location...')),
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.gps_not_fixed, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Waiting for GPS location...'),
+            ],
+          ),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       );
       await _getCurrentLocation();
       return;
     }
 
+    // Haptic feedback on capture
+    HapticFeedback.mediumImpact();
     await cameraService.capturePhoto();
   }
 
   Future<void> _uploadPhoto() async {
+    // Prevent multiple uploads
+    if (_isProcessing) return;
+
     final cameraService = Provider.of<CameraService>(context, listen: false);
     if (cameraService.capturedImage == null || _currentPosition == null) return;
 
     final authService = Provider.of<AuthService>(context, listen: false);
+    final pendingService =
+        Provider.of<PendingUploadsService>(context, listen: false);
     final token = await authService.getValidToken();
+
+    // Capture ScaffoldMessenger before async operations to avoid context issues
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     if (token == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           const SnackBar(content: Text('Please sign in to upload photos')),
         );
       }
       return;
     }
 
+    // Generate unique local ID for this upload
+    final localId = DateTime.now().millisecondsSinceEpoch.toString();
+
+    // Create pending upload immediately (shows in UI right away)
+    final pendingUpload = PendingUpload(
+      localId: localId,
+      imageFile: cameraService.capturedImage!,
+      latitude: _currentPosition!.latitude,
+      longitude: _currentPosition!.longitude,
+      timestamp: DateTime.now(),
+      status: PendingUploadStatus.uploading,
+    );
+
+    pendingService.addPendingUpload(pendingUpload);
+
+    // Set processing state and haptic feedback
+    HapticFeedback.mediumImpact();
     setState(() {
       _isProcessing = true;
     });
 
     try {
-      final response = await _apiService.uploadPhoto(
-        imageFile: cameraService.capturedImage!,
+      // Determine content type from file extension
+      String contentType = 'image/jpeg';
+      final extension =
+          cameraService.capturedImage!.path.toLowerCase().split('.').last;
+      if (extension == 'png') {
+        contentType = 'image/png';
+      }
+
+      debugPrint('Starting upload with signed URL flow...');
+
+      // Step 1: Request signed URL from backend
+      final signedUrlData = await _apiService.getSignedUploadUrl(
         lat: _currentPosition!.latitude,
         lng: _currentPosition!.longitude,
         idToken: token,
+        contentType: contentType,
       );
 
+      // Step 2: Upload directly to GCS using signed URL with required headers
+      await _apiService.uploadToGCS(
+        signedUrl: signedUrlData['upload_url'],
+        imageFile: cameraService.capturedImage!,
+        contentType: contentType,
+        requiredHeaders: signedUrlData['required_headers'] != null
+            ? Map<String, String>.from(signedUrlData['required_headers'])
+            : null,
+      );
+
+      // Update status to processing (worker will process in background)
+      pendingService.updateUploadStatus(
+        localId,
+        PendingUploadStatus.processing,
+        fileName: signedUrlData['file_name'],
+      );
+
+      // Clear captured image
       cameraService.clearCapturedImage();
 
-      setState(() {
-        _isProcessing = false;
-      });
-
-      if (mounted && response != null) {
-        final success = response['success'] ?? false;
-        final message = response['message'] ?? 'Upload completed';
-        final category = response['category'];
-        final weight = response['weight'];
-
-        if (success) {
-          await authService.refreshUserData();
-
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  '$message\n+250 points • Category: $category, Weight: ${weight?.toStringAsFixed(2) ?? 'N/A'}',
-                ),
-                backgroundColor: Colors.green,
-                duration: const Duration(seconds: 3),
-              ),
-            );
-          }
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(message),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
       }
+
+      // Step 3: Show success message (processing happens in background)
+      HapticFeedback.lightImpact();
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text('Upload complete! Analyzing image...'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+
+      // Mark as completed after worker finishes (estimated 5-8 seconds)
+      Future.delayed(const Duration(seconds: 8), () {
+        pendingService.markCompleted(localId);
+        authService.refreshUser();
+      });
 
       _getCurrentLocation();
     } catch (e) {
-      setState(() {
-        _isProcessing = false;
-      });
+      // Remove the failed upload from pending list
+      pendingService.removePendingUpload(localId);
 
       if (mounted) {
-        String errorMessage = e.toString();
-        if (errorMessage.startsWith('Exception: ')) {
-          errorMessage = errorMessage.substring(11);
-        }
-
-        // Check if this is an image rejection error (HTTP 400 from backend)
-        if (errorMessage.contains('Image rejected') ||
-            errorMessage.contains('trash image') ||
-            errorMessage.contains('outdoor scene')) {
-          // Show minimal modal for rejection
-          RejectionModal.show(
-            context,
-            'Please upload outdoor scenes only. Avoid selfies, memes, screenshots, or indoor photos.',
-          );
-        } else {
-          // Show snackbar for other errors (network, auth, etc.)
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Upload failed: $errorMessage'),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        }
+        setState(() {
+          _isProcessing = false;
+        });
       }
+
+      String errorMessage = e.toString();
+      if (errorMessage.startsWith('Exception: ')) {
+        errorMessage = errorMessage.substring(11);
+      }
+
+      // Show snackbar for errors with haptic feedback
+      HapticFeedback.mediumImpact();
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text('Upload failed: $errorMessage'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          duration: const Duration(seconds: 4),
+        ),
+      );
     }
   }
 
@@ -585,44 +666,62 @@ class _CaptureScreenState extends State<CaptureScreen>
                             !cameraService.isProcessing)
                         ? _capturePhoto
                         : null,
-                    child: Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white,
-                          width: 4,
-                        ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(4),
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            // Show the normal capture button when not processing,
-                            // otherwise show a small progress indicator.
-                            if (!cameraService.isProcessing)
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: cameraService.isInitialized
-                                      ? Colors.white
-                                      : Colors.white.withOpacity(0.5),
-                                  shape: BoxShape.circle,
-                                ),
-                              )
-                            else
-                              SizedBox(
-                                width: 36,
-                                height: 36,
-                                child: const CircularProgressIndicator(
-                                  strokeWidth: 3,
-                                  color: Colors.white,
-                                ),
+                    child: TweenAnimationBuilder<double>(
+                      duration: const Duration(milliseconds: 1500),
+                      curve: Curves.easeInOut,
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      builder: (context, value, child) {
+                        return Transform.scale(
+                          scale: 1.0 + (0.05 * (0.5 - (value - 0.5).abs())),
+                          child: Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 4,
                               ),
-                          ],
-                        ),
-                      ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.white.withOpacity(
+                                      0.3 * (0.5 - (value - 0.5).abs())),
+                                  blurRadius: 20,
+                                  spreadRadius: 5,
+                                ),
+                              ],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  // Show the normal capture button when not processing,
+                                  // otherwise show a small progress indicator.
+                                  if (!cameraService.isProcessing)
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: cameraService.isInitialized
+                                            ? Colors.white
+                                            : Colors.white.withOpacity(0.5),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    )
+                                  else
+                                    const SizedBox(
+                                      width: 36,
+                                      height: 36,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 3,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ),

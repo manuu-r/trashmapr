@@ -1,5 +1,5 @@
 # Development Dockerfile for React + Vite
-FROM node:20-alpine
+FROM node:22-slim
 
 # Set working directory
 WORKDIR /app

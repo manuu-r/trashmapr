@@ -6,9 +6,18 @@ class AppTheme {
       colorScheme: ColorScheme.fromSeed(
         seedColor: const Color(0xFF2E7D32), // Green for eco/trash theme
         brightness: Brightness.light,
+        dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
       ),
       useMaterial3: true,
       visualDensity: VisualDensity.standard,
+
+      // Modern page transitions
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: PredictiveBackPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        },
+      ),
 
       // Material 3 Expressive styling
       textTheme: const TextTheme(
@@ -133,7 +142,7 @@ class AppTheme {
       ),
 
       navigationBarTheme: NavigationBarThemeData(
-        elevation: 3,
+        elevation: 0,
         height: 80,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         iconTheme: WidgetStateProperty.resolveWith((states) {
@@ -142,6 +151,33 @@ class AppTheme {
           }
           return const IconThemeData(size: 24);
         }),
+        backgroundColor: Colors.transparent,
+      ),
+
+      // Floating Action Button with modern styling
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        elevation: 2,
+        highlightElevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+        ),
+      ),
+
+      // Dialog theme with rounded corners
+      dialogTheme: DialogThemeData(
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(28),
+        ),
+      ),
+
+      // Snackbar theme
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        elevation: 3,
       ),
     );
   }
@@ -151,9 +187,18 @@ class AppTheme {
       colorScheme: ColorScheme.fromSeed(
         seedColor: const Color(0xFF2E7D32),
         brightness: Brightness.dark,
+        dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
       ),
       useMaterial3: true,
       visualDensity: VisualDensity.standard,
+
+      // Modern page transitions
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: PredictiveBackPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        },
+      ),
 
       // Material 3 Expressive styling
       textTheme: const TextTheme(
@@ -278,7 +323,7 @@ class AppTheme {
       ),
 
       navigationBarTheme: NavigationBarThemeData(
-        elevation: 3,
+        elevation: 0,
         height: 80,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         iconTheme: WidgetStateProperty.resolveWith((states) {
@@ -287,6 +332,33 @@ class AppTheme {
           }
           return const IconThemeData(size: 24);
         }),
+        backgroundColor: Colors.transparent,
+      ),
+
+      // Floating Action Button with modern styling
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        elevation: 2,
+        highlightElevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+        ),
+      ),
+
+      // Dialog theme with rounded corners
+      dialogTheme: DialogThemeData(
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(28),
+        ),
+      ),
+
+      // Snackbar theme
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        elevation: 3,
       ),
     );
   }

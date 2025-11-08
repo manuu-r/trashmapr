@@ -26,6 +26,7 @@ class UserResponse(BaseModel):
     email: str
     name: Optional[str] = None
     picture: Optional[str] = None
+    fcm_token: Optional[str] = None
     total_points: int = 0
     total_uploads: int = 0
     created_at: datetime
@@ -125,3 +126,18 @@ class UserInfo(BaseModel):
     email: str
     name: Optional[str] = None
     picture: Optional[str] = None
+
+
+class FCMTokenRequest(BaseModel):
+    """Schema for FCM token registration request."""
+
+    fcm_token: str = Field(
+        ..., min_length=1, description="Firebase Cloud Messaging token"
+    )
+
+
+class FCMTokenResponse(BaseModel):
+    """Schema for FCM token registration response."""
+
+    success: bool
+    message: str

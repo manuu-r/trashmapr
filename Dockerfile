@@ -1,5 +1,5 @@
 # Multi-stage build: Build React frontend first
-FROM node:20-slim AS react-builder
+FROM node:22-slim AS react-builder
 
 WORKDIR /react-build
 

@@ -36,6 +36,9 @@ Remove the latitude and longitude fields; keep only timestamp, category, and wei
 
 Remove the Ugly header and footer banners. Instead, implement Material UI 3 expressive floating info sections, positioned cleanly and contextually in the right places.
 
+
+NOTE: Then I use Gemini-cli through zed and claude-code to improve and fix bugs.
+
 ---
 
 # Google chat Prompts (backend & cloudrun)
@@ -82,3 +85,28 @@ I have a local .env file... how can I securely store it in the cloud? Which serv
 
 ## Prompt 7
 can you help me set up a secret manager && grant cloud run access to secrets
+
+## Prompt 8
+
+(Gave full summary file of current architecture) is my current app and I want to implement new event driven architecture with signed URLs, Pub/Sub, and Cloud Run workers.
+
+- Request: The Flutter app asks my FastAPI for a special link to upload a file.
+- Authorize: Backend generates a secure, temporary link (a Signed URL) - that includes the user's ID as hidden metadata and sends it back to the app.
+- Upload: The Flutter app uses that link to upload the image file directly to Google Cloud Storage. The user gets an immediate "Upload Complete" confirmation.
+- Notify: As soon as the upload finishes, Cloud Storage automatically sends a "new file" message to a Pub/Sub topic. This message contains the file's location and the user's ID.
+- Trigger: Pub/Sub immediately pushes that message to your separate Cloud Run worker.
+- Process: The worker wakes up and does all the slow work in the background: calls the Gemini API, and saves the final results to your Cloud SQL database. The user is completely unaware of this background processing.
+
+First help me setup all google cloud requirements.
+(follow up prompts to setup bucket, pub/sub, service accounts and permissions)
+
+## Prompt 9
+
+Currently have Setup:
+Cloud SQL (Database)
+Cloud Storage Bucket
+Pub/Sub
+
+I’m not sure what permissions are currently assigned to these resources. I’ve attached the required architecture(my system arch was attached).  help me configure the correct permissions and deploy? (no code, just walk me through google cloud part.)
+
+follow up prompt - using one shared service account for both backend+worker

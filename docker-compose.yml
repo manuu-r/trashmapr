@@ -1,38 +1,20 @@
 services:
-  # FastAPI backend - connects to Google Cloud services
-  api:
+  # Backend build for Cloud Run (default)
+  backend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: trashmapr-api
-    env_file:
-      - backend/.env
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./backend:/app
-      - ./backend/gcp_creds.json:/tmp/gcp_creds.json:ro
-    environment:
-      - GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp_creds.json
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      platforms:
+        - linux/amd64
+    image: ${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${GCP_REPO}/trashmapr-backend:${COMMIT_HASH}
 
-  # Cloudflare Tunnel - exposes backend to the internet
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: trashmapr-tunnel
-    command: tunnel --no-autoupdate run
-    env_file:
-      - backend/.env
-    restart: unless-stopped
-    depends_on:
-      - api
-
-networks:
-  default:
-    name: trashmapr-network
+  # Worker build for Cloud Run
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
+    image: ${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${GCP_REPO}/trashmapr-worker:${COMMIT_HASH}
+    profiles:
+      - worker

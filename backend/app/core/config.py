@@ -30,7 +30,6 @@ class Settings(BaseSettings):
     google_application_credentials: str | None = Field(default=None)
 
     # Google Cloud Services
-    gemini_api_key: str = Field(...)
     gcs_bucket_name: str = Field(...)
     gcp_project_id: str = Field(default="thinking-avenue-477210-k0")
     gcp_region: str = Field(default="us-west1")

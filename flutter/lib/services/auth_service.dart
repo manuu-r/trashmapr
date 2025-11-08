@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:convert';
 import '../models/user.dart';
 import 'secure_storage_service.dart';
+import 'fcm_service.dart';
 
 class AuthService extends ChangeNotifier {
   GoogleSignInAccount? _googleUser;
@@ -178,6 +179,9 @@ class AuthService extends ChangeNotifier {
       _authError = null;
       await _saveToSecureStorage();
 
+      // Step 6: Register FCM token for push notifications
+      await _registerFCMToken();
+
       debugPrint('AuthService: Sign-in successful');
       _setLoading(false);
       return true;
@@ -213,9 +217,63 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// Register FCM token with backend
+  Future<void> _registerFCMToken() async {
+    debugPrint('AuthService: _registerFCMToken called');
+
+    if (_idToken == null) {
+      debugPrint('AuthService: No idToken available for FCM registration');
+      return;
+    }
+
+    try {
+      debugPrint('AuthService: Initializing FCM service...');
+      final fcmService = FCMService();
+
+      // Initialize FCM if not already initialized
+      await fcmService.initialize();
+      debugPrint('AuthService: FCM service initialized');
+
+      // Wait a moment for token to be obtained
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Register token with backend if we have one
+      if (fcmService.fcmToken != null) {
+        debugPrint('AuthService: FCM token found, registering with backend...');
+        debugPrint(
+            'AuthService: Token: ${fcmService.fcmToken?.substring(0, 20)}...');
+        await fcmService.registerToken(_idToken!);
+        debugPrint('AuthService: FCM token registered successfully');
+      } else {
+        debugPrint('AuthService: No FCM token available yet');
+      }
+    } catch (error, stackTrace) {
+      debugPrint('AuthService: Error registering FCM token: $error');
+      debugPrint('AuthService: Stack trace: $stackTrace');
+      // Don't fail login if FCM registration fails
+    }
+  }
+
+  /// Unregister FCM token from backend
+  Future<void> _unregisterFCMToken() async {
+    if (_idToken == null) return;
+
+    try {
+      final fcmService = FCMService();
+      await fcmService.unregisterToken(_idToken!);
+      debugPrint('AuthService: FCM token unregistered');
+    } catch (error) {
+      debugPrint('AuthService: Error unregistering FCM token: $error');
+      // Don't fail logout if FCM unregistration fails
+    }
+  }
+
   /// Logout - clear everything
   Future<void> _logout() async {
     try {
+      // Unregister FCM token before logout
+      await _unregisterFCMToken();
+
       await GoogleSignIn.instance.disconnect();
       await _secureStorage.clearAuthData();
     } catch (error) {
@@ -226,6 +284,26 @@ class AuthService extends ChangeNotifier {
     _currentUser = null;
     _idToken = null;
     _authError = null;
+  }
+
+  /// Refresh user data from backend (e.g., after points update)
+  Future<void> refreshUser() async {
+    if (_idToken == null) return;
+
+    try {
+      debugPrint('AuthService: Refreshing user data...');
+      final updatedUser = await _fetchUserFromBackend();
+
+      if (updatedUser != null) {
+        _currentUser = updatedUser;
+        await _saveToSecureStorage();
+        notifyListeners();
+        debugPrint(
+            'AuthService: User data refreshed - Points: ${updatedUser.totalPoints}');
+      }
+    } catch (error) {
+      debugPrint('AuthService: Error refreshing user: $error');
+    }
   }
 
   /// Public sign-out
