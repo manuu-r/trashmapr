@@ -107,7 +107,7 @@ const LandingPage: React.FC = () => {
                   </p>
                   <div className="flex flex-col space-y-3">
                     <a
-                      href="https://mega.nz/file/1qZSwaDR#VIv04mpm79YjtC7e5IGbBneQWg3aBO6VIKl3av1m8W4"
+                      href="https://github.com/manuu-r/trashmapr/releases/download/beta-v0.1.1/app-release.apk"
                       download
                       className="inline-flex items-center justify-center gap-3 px-6 py-3 bg-surface border border-outline text-on-surface font-semibold rounded-xl hover:bg-surface-container transition-all hover:scale-[1.01] active:scale-[0.99]"
                     >
@@ -128,7 +128,7 @@ const LandingPage: React.FC = () => {
                       Download APK
                     </a>
                     <a
-                      href="https://mega.nz/file/pz4XhCIY#uKMeT6_PuLdKbFfHIBXfUZJUdTHOKECxeg0VhWSvaqw"
+                      href="https://github.com/manuu-r/trashmapr/releases/download/beta-v0.1.1/app-release.apk.sha1"
                       download
                       className="inline-flex items-center justify-center gap-2 text-sm text-on-surface-variant hover:text-primary transition-colors font-medium"
                     >

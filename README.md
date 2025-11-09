@@ -1,12 +1,12 @@
-# TrashMapR
+# TrashMapr
 
-TrashMapR is a Google Cloud–native system designed for crowdsourcing and visualizing trash locations. Users can upload images of litter via a mobile app, and the data is processed and displayed on a public web-based heatmap.
+TrashMapr is a google cloudrun system designed for crowdsourcing and visualizing trash locations. Users can upload images of litter via a mobile app, and the data is processed and displayed on a public web-based heatmap.
 
 ## Documentation
 
 This document provides a high-level overview. For more detailed information, please refer to the documentation in the `docs` folder:
 
-- **[Architecture](docs/Architecture.md)**: A detailed explanation of the system architecture, components, and data flows, including Mermaid diagrams.
+- **[Architecture](docs/Architecture.md)**: A detailed explanation of the system architecture, components, and data flows, including diagrams.
 - **[API and Data Flow](docs/API_FLOW.md)**: A description of the API endpoints and the sequence of events for major operations.
 - **[Deployment Guide](docs/DEPLOYMENT.md)**: Instructions for deploying the system to Google Cloud Platform.
 - **[Local Setup and Testing](docs/LOCAL_SETUP.md)**: A guide for setting up and running the system on a local machine for development and testing.
@@ -36,5 +36,3 @@ The system features a serverless, event-driven architecture. A Flutter mobile ap
 - **Infrastructure**: Google Cloud Platform (Cloud Run, Cloud Storage, Pub/Sub, Identity Platform)
 - **Notifications**: Firebase Cloud Messaging (FCM)
 - **Containerization**: Docker, Docker Compose
-
-**Note on project cleanup:** Some older markdown files (`QUICK_START.md`, `LOCAL_TESTING.md`, etc.) may still exist in the project. The documentation listed above is the most current and accurate. I was unable to remove the old files automatically.
