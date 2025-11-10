@@ -6,7 +6,7 @@ TrashMapr is a google cloudrun system designed for crowdsourcing and visualizing
 
 This document provides a high-level overview. For more detailed information, please refer to the documentation in the `docs` folder:
 
-- **[Architecture](docs/Architecture.md)**: A detailed explanation of the system architecture, components, and data flows, including diagrams.
+- **[Architecture](docs/System_architecture.md)**: A detailed explanation of the system architecture, components, and data flows, including diagrams.
 - **[API and Data Flow](docs/API_FLOW.md)**: A description of the API endpoints and the sequence of events for major operations.
 - **[Deployment Guide](docs/DEPLOYMENT.md)**: Instructions for deploying the system to Google Cloud Platform.
 - **[Local Setup and Testing](docs/LOCAL_SETUP.md)**: A guide for setting up and running the system on a local machine for development and testing.
